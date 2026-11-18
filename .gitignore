@@ -1,0 +1,4 @@
+# saidas do Gerar.ps1 (instaladores, pacotes e logs): geradas a cada deploy
+publicar/
+preparo/
+logs/
