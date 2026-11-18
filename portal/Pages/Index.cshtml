@@ -1,0 +1,33 @@
+@page
+@model IndexModel
+@{
+    ViewData["Titulo"] = "Instaladores";
+}
+<section class="cartao">
+    <h1>Instaladores</h1>
+    @if (Model.Itens.Count == 0)
+    {
+        <p class="ajuda">Nenhum instalador publicado no momento.</p>
+    }
+    else
+    {
+        <p class="ajuda">Versões publicadas no último deploy. Os programas instalados também se atualizam sozinhos (com aviso ao usuário).</p>
+        <table class="lista">
+            <thead>
+                <tr><th>Programa</th><th>Versão</th><th class="num">Tamanho</th><th>Publicado em</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var i in Model.Itens)
+                {
+                    <tr>
+                        <td data-titulo="Programa"><strong>@i.Programa</strong><div class="arquivo">@i.Arquivo</div></td>
+                        <td data-titulo="Versão" class="mono">@i.Versao</td>
+                        <td data-titulo="Tamanho" class="num">@IndexModel.Tamanho(i.Tamanho)</td>
+                        <td data-titulo="Publicado em">@(i.Data == default ? "" : i.Data.ToString("dd/MM/yyyy HH:mm"))</td>
+                        <td class="acao"><a class="botao" href="/baixar/@Uri.EscapeDataString(i.Arquivo)" title="SHA-256: @i.Sha256">Baixar</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>

@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-  Envia .\publicar para o servidor de atualizacoes (/var/www/officeupdate) por SSH, so com o que mudou.
+  Envia .\publicar para o servidor de atualizacoes (/var/www/update) por SSH, so com o que mudou.
 
   1. compara o SHA-256 de cada arquivo local com o do publicado no servidor;
   2. no servidor, copia o publicado para uma pasta temporaria e manda para ela so os arquivos novos ou alterados
      (os que sairam de .\publicar sao apagados dela);
   3. so no fim a pasta temporaria substitui o publicado (quem estiver baixando nao pega metade de uma versao).
-  A versao anterior fica em /var/www/officeupdate.anterior ate o proximo envio.
+  A versao anterior fica em /var/www/update.anterior ate o proximo envio.
 
   Acesso: chave SSH (no PowerShell, uma vez; pede a senha do root):
     Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@166.0.186.213 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
@@ -17,7 +17,7 @@
 #>
 param(
     [string] $Servidor = "root@166.0.186.213",
-    [string] $Remoto   = "/var/www/officeupdate",
+    [string] $Remoto   = "/var/www/update",
     [string] $Dono     = "www-data",
     [switch] $Tudo
 )

@@ -1,0 +1,17 @@
+[Unit]
+Description=Portal de downloads BrPDV (update.brpdv.com.br)
+After=network.target kestrel-site.service
+
+[Service]
+WorkingDirectory=/var/www/update-portal
+ExecStart=/usr/bin/dotnet /var/www/update-portal/Downloads.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=update-portal
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_NOLOGO=1
+
+[Install]
+WantedBy=multi-user.target

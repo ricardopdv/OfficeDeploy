@@ -1,0 +1,118 @@
+:root {
+    --fundo: #f4f6f8;
+    --cartao: #ffffff;
+    --texto: #1d2733;
+    --suave: #5f6b78;
+    --linha: #e2e7ec;
+    --destaque: #1a7f4b;
+    --destaque-escuro: #146a3e;
+    --erro-fundo: #fdecec;
+    --erro-texto: #9b1c1c;
+    --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 16px rgba(16, 24, 40, .06);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --fundo: #0f1419;
+        --cartao: #171e26;
+        --texto: #e6ebf0;
+        --suave: #9aa6b2;
+        --linha: #26313c;
+        --destaque: #2fa66a;
+        --destaque-escuro: #279059;
+        --erro-fundo: #3a1717;
+        --erro-texto: #ffb4b4;
+        --sombra: none;
+    }
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+    background: var(--fundo);
+    color: var(--texto);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 24px;
+    background: var(--cartao);
+    border-bottom: 1px solid var(--linha);
+}
+
+.marca { display: flex; align-items: baseline; gap: 8px; }
+.logo { font-weight: 800; font-size: 20px; letter-spacing: .5px; }
+.logo::after { content: ""; display: inline-block; width: 28px; height: 4px; margin-left: 8px; vertical-align: middle; border-radius: 2px;
+    background: linear-gradient(90deg, #16a34a 0 50%, #facc15 50% 75%, #2563eb 75%); }
+.sub { color: var(--suave); }
+
+.sair { display: flex; align-items: center; gap: 12px; margin: 0; }
+.usuario { color: var(--suave); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
+
+.conteudo { flex: 1; width: 100%; max-width: 980px; margin: 0 auto; padding: 32px 16px; }
+
+.cartao {
+    background: var(--cartao);
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    box-shadow: var(--sombra);
+    padding: 28px;
+}
+
+.login { max-width: 400px; margin: 24px auto; }
+
+h1 { margin: 0 0 6px; font-size: 22px; }
+.ajuda { margin: 0 0 20px; color: var(--suave); }
+
+label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: 14px; }
+input[type=email], input[type=password] {
+    width: 100%; padding: 10px 12px; font: inherit; color: var(--texto);
+    background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px;
+}
+input:focus { outline: 2px solid var(--destaque); outline-offset: 1px; }
+
+.botao {
+    display: inline-block; margin-top: 20px; padding: 10px 18px; border: 0; border-radius: 8px;
+    background: var(--destaque); color: #fff; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.login .botao { width: 100%; }
+.botao:hover { background: var(--destaque-escuro); }
+.lista .botao { margin-top: 0; padding: 7px 14px; }
+
+.botao-link { background: none; border: 0; padding: 0; color: var(--destaque); font: inherit; font-weight: 600; cursor: pointer; }
+
+.erro { margin: 0 0 8px; padding: 10px 12px; border-radius: 8px; background: var(--erro-fundo); color: var(--erro-texto); }
+
+.lista { width: 100%; border-collapse: collapse; }
+.lista th { text-align: left; font-size: 13px; color: var(--suave); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--linha); }
+.lista td { padding: 12px 10px; border-bottom: 1px solid var(--linha); vertical-align: middle; }
+.lista tr:last-child td { border-bottom: 0; }
+.lista .num { text-align: right; white-space: nowrap; }
+.lista .acao { text-align: right; }
+.arquivo { color: var(--suave); font-size: 13px; }
+.mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; }
+
+.rodape { text-align: center; color: var(--suave); font-size: 13px; padding: 16px; }
+
+@media (max-width: 640px) {
+    .topo { padding: 12px 16px; }
+    .cartao { padding: 20px 16px; }
+    .lista thead { display: none; }
+    .lista, .lista tbody, .lista tr, .lista td { display: block; width: 100%; }
+    .lista tr { padding: 12px 0; border-bottom: 1px solid var(--linha); }
+    .lista tr:last-child { border-bottom: 0; }
+    .lista td { border: 0; padding: 2px 0; text-align: left !important; }
+    .lista td[data-titulo]::before { content: attr(data-titulo) ": "; color: var(--suave); font-size: 13px; }
+    .lista td:first-child::before { content: none; }
+    .lista .acao { padding-top: 10px; }
+    .lista .botao { width: 100%; text-align: center; }
+}

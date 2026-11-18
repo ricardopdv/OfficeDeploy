@@ -8,12 +8,15 @@
   .\Gerar.ps1 -Programas troca,gateway
   .\Gerar.ps1 -SemCompilar          # reaproveita a ultima compilacao (so empacota)
   .\Gerar.ps1 -Enviar               # gera e envia ao servidor
+  .\Gerar.ps1 -SoCatalogo           # so o instaladores.json do portal
 #>
 param(
     [string[]] $Programas,
     [switch] $SemCompilar,
     [switch] $Enviar,
-    # endereco publico da pasta /var/www/officeupdate (usado nos AutoUpdater.xml)
+    # so refaz o instaladores.json (catalogo do portal) com os instaladores que ja estao em publicar\instaladores
+    [switch] $SoCatalogo,
+    # endereco publico da pasta /var/www/update (usado nos AutoUpdater.xml)
     [string] $UrlBase = "https://update.brpdv.com.br"
 )
 
@@ -26,7 +29,7 @@ Set-StrictMode -Version 2
 $Raiz      = $PSScriptRoot
 $OM        = "D:\Desenv\C#\OfficeManager"          # Source\ (fontes) e Release\ (saida das compilacoes)
 $CaixaRepo = "D:\Desenv\IA\Caixa"                  # repositorio do Caixa (setup\GerarInstalador.cmd)
-$Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/officeupdate
+$Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/update
 $Preparo   = Join-Path $Raiz "preparo"             # copia limpa de cada programa antes de empacotar
 $Logs      = Join-Path $Raiz "logs"
 
@@ -175,7 +178,7 @@ foreach ($p in $Publicar, $Instaladores, $Atualizacoes, $Preparo, $Logs) { if (-
 $inicio = Get-Date
 $resumo = @()
 
-foreach ($prog in $escolhidos) {
+foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     Passo $prog.Nome
 
     if ($prog.ContainsKey("Caixa")) {
@@ -261,20 +264,27 @@ foreach ($prog in $escolhidos) {
     $resumo += [pscustomobject]@{ Programa = $prog.Nome; Versao = $versao.Arquivo; Instalador = "$arquivo.exe"; Atualizacao = "atualizacoes/$($prog.Id)/" }
 }
 
-# indice simples para quem abrir a pasta no navegador
-$linhas = Get-ChildItem $Instaladores -Filter *.exe | Sort-Object Name | ForEach-Object {
-    $v = $_.VersionInfo.ProductVersion
-    "<tr><td><a href=""instaladores/$([uri]::EscapeDataString($_.Name))"">$($_.Name)</a></td><td>$v</td><td>$([math]::Round($_.Length / 1MB, 1)) MB</td><td>$($_.LastWriteTime.ToString('dd/MM/yyyy HH:mm'))</td></tr>"
+# catalogo dos instaladores para o portal de downloads (portal\): nome do programa, versao, tamanho, data e SHA-256.
+# Inclui os instaladores de rodadas anteriores que continuam na pasta (rodando so alguns programas com -Programas).
+$nomes = @{}
+foreach ($p in $Lista) {
+    $setup = if ($p.ContainsKey("Setup")) { $p.Setup } else { "Setup " + ($p.Nome -replace '[^A-Za-z0-9 ]', '') + ".exe" }
+    $nomes[$setup] = $p.Nome
 }
-$html = @"
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>OfficeManager - instaladores</title>
-<style>body{font-family:Segoe UI,Arial,sans-serif;margin:24px}table{border-collapse:collapse}td,th{padding:6px 12px;border-bottom:1px solid #ddd;text-align:left}</style></head>
-<body><h1>OfficeManager - instaladores</h1><p>Gerado em $((Get-Date).ToString('dd/MM/yyyy HH:mm'))</p>
-<table><tr><th>Instalador</th><th>Versao</th><th>Tamanho</th><th>Data</th></tr>
-$($linhas -join "`n")
-</table></body></html>
-"@
-[IO.File]::WriteAllText((Join-Path $Publicar "index.html"), $html, (New-Object Text.UTF8Encoding $false))
+$catalogo = @(Get-ChildItem $Instaladores -Filter *.exe | Sort-Object Name | ForEach-Object {
+    [ordered]@{
+        arquivo  = $_.Name
+        programa = if ($nomes.ContainsKey($_.Name)) { $nomes[$_.Name] } else { $_.BaseName -replace '^Setup ', '' }
+        versao   = "$($_.VersionInfo.ProductVersion)".Trim()
+        tamanho  = $_.Length
+        data     = $_.LastWriteTime.ToString("s")
+        sha256   = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+    }
+})
+[IO.File]::WriteAllText((Join-Path $Instaladores "instaladores.json"), (ConvertTo-Json $catalogo -Depth 3), (New-Object Text.UTF8Encoding $false))
+# o portal substitui a antiga pagina publica (index.html)
+$antigo = Join-Path $Publicar "index.html"
+if (Test-Path $antigo) { Remove-Item $antigo -Force }
 
 Passo "Pronto em $([int]((Get-Date) - $inicio).TotalMinutes) min: $Publicar"
 $resumo | Format-Table -AutoSize

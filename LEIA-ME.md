@@ -6,9 +6,11 @@ e publica no servidor de atualizações.
 | Arquivo | O que faz |
 |---|---|
 | `Gerar.cmd` / `Gerar.ps1` | Compila em Release, prepara cada programa e gera tudo em `publicar\` |
-| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@166.0.186.213:/var/www/officeupdate` |
+| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@166.0.186.213:/var/www/update` |
 | `GerarEEnviar.cmd` | Os dois em seguida |
 | `iss\App.iss` | Modelo do instalador (Inno Setup 6), o mesmo para todos os programas |
+| `portal\` | Portal de downloads com login (ASP.NET Core 10) em `https://update.brpdv.com.br` |
+| `PublicarPortal.ps1` | Publica o portal, o serviço `update-portal` e o nginx no servidor |
 
 ## Programas
 
@@ -42,11 +44,11 @@ GerarEEnviar.cmd                            gera tudo e publica
 Enviar.cmd                                  publica o que já está em publicar\
 ```
 
-## O que sai em `publicar\` (espelho de `/var/www/officeupdate`)
+## O que sai em `publicar\` (espelho de `/var/www/update`)
 
 ```
-index.html                                  lista dos instaladores (para abrir no navegador)
-instaladores\Setup <Programa>.exe           um instalador por programa
+instaladores\Setup <Programa>.exe           um instalador por programa (baixado só pelo portal, com login)
+instaladores\instaladores.json              catálogo para o portal: programa, versão, tamanho, data e SHA-256
 atualizacoes\<id>\<id>.zip                  pacote no formato do AutoUpdater.NET
 atualizacoes\<id>\AutoUpdater.xml           versão e endereço do zip
 ```
@@ -72,12 +74,29 @@ As versões já instaladas antes desta mudança continuam olhando o servidor ant
 até receberem uma versão com o endereço novo (pelo instalador ou por uma última atualização publicada no servidor antigo).
 O endereço usado nos XML é o parâmetro `-UrlBase` do `Gerar.ps1` (padrão `https://update.brpdv.com.br`).
 
+## Portal de downloads (`portal\`)
+
+Os técnicos entram em `https://update.brpdv.com.br` com o **mesmo e-mail e senha do portal das revendas**: o portal
+faz o mesmo login do `RevendasRazor` (`POST api/Accounts/Login` do site, chamado dentro do servidor em
+`http://localhost:8000`) e só deixa entrar quem tem o papel **Admin** ou **Revenda** (os mesmos do portal das revendas).
+
+- Lista os instaladores do `instaladores.json`; o download exige login e é entregue pelo nginx (`X-Accel-Redirect`
+  para a location interna `/_instaladores/`); `/instaladores/` direto não abre.
+- Cada download fica no log do serviço com o e-mail do técnico: `journalctl -u update-portal`.
+- Login: 10 tentativas por minuto por IP; sessão de 8 horas (cookie); só por HTTPS.
+- Configuração em `portal\appsettings.json` (endereço do login, papéis, pasta publicada).
+- Publicar: `PublicarPortal.ps1` (dotnet publish, `/var/www/update-portal`, serviço `update-portal` em
+  `127.0.0.1:8010`, chaves do cookie em `/var/lib/update-portal`, nginx `portal\deploy\update.conf`).
+- Rodar local: `dotnet run --project portal` (ambiente Development: login na API pública das revendas, instaladores de `publicar\`).
+
 ## Servidor (nginx)
 
-- `https://update.brpdv.com.br` (e `http://`, para Windows antigos sem TLS 1.2): `/etc/nginx/conf.d/update.conf`,
-  raiz `/var/www/officeupdate`, sem listagem de pastas, `AutoUpdater.xml` sem cache. Certificado do Let's Encrypt
-  (certbot, renovação automática).
-- Também por IP: `http://166.0.186.213/officeupdate/` (bloco `location /officeupdate/` no `sites-available/default`).
+`/etc/nginx/conf.d/update.conf` (cópia em `portal\deploy\update.conf`), raiz `/var/www/update`:
+
+- `https://update.brpdv.com.br/atualizacoes/…` público (o AutoUpdater dos programas baixa sem login),
+  `AutoUpdater.xml` sem cache; também por `http://` (Windows antigos sem TLS 1.2);
+- todo o resto vai para o portal; em `http://` redireciona para `https://`;
+- certificado do Let's Encrypt (certbot, renovação automática).
 
 ## Preparação de cada programa
 
@@ -89,8 +108,8 @@ documentação XML das DLLs (`Nome.xml` ao lado de `Nome.dll`). O resultado fica
 ## Envio (SSH)
 
 Só vão os arquivos novos ou alterados (comparação por SHA-256 com o publicado; `-Tudo` manda tudo). O servidor
-copia o publicado para `/var/www/officeupdate.envio`, recebe ali as mudanças e só no fim troca as pastas; a versão
-anterior fica em `/var/www/officeupdate.anterior`. No fim o publicado é conferido arquivo a arquivo com o local.
+copia o publicado para `/var/www/update.envio`, recebe ali as mudanças e só no fim troca as pastas; a versão
+anterior fica em `/var/www/update.anterior`. No fim o publicado é conferido arquivo a arquivo com o local.
 A conexão daqui sobe a ~100 KB/s: o primeiro envio (~2 GB) leva horas; os seguintes, só o que mudou.
 
 A chave SSH (no PowerShell, uma vez; pede a senha do root):
