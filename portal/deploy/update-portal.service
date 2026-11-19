@@ -1,5 +1,5 @@
 [Unit]
-Description=Portal de downloads BrPDV (update.brpdv.com.br)
+Description=Portal de downloads BrPDV (update.gestaoagil.com.br)
 After=network.target kestrel-site.service
 
 [Service]

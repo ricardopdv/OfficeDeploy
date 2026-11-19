@@ -9,14 +9,14 @@
   A versao anterior fica em /var/www/update.anterior ate o proximo envio.
 
   Acesso: chave SSH (no PowerShell, uma vez; pede a senha do root):
-    Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@166.0.186.213 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+    Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@76.13.236.246 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 
 .EXAMPLE
   .\Enviar.ps1
   .\Enviar.ps1 -Tudo        # manda tudo, sem comparar
 #>
 param(
-    [string] $Servidor = "root@166.0.186.213",
+    [string] $Servidor = "root@76.13.236.246",
     [string] $Remoto   = "/var/www/update",
     [string] $Dono     = "www-data",
     [switch] $Tudo

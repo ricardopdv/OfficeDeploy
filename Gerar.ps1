@@ -17,7 +17,7 @@ param(
     # so refaz o instaladores.json (catalogo do portal) com os instaladores que ja estao em publicar\instaladores
     [switch] $SoCatalogo,
     # endereco publico da pasta /var/www/update (usado nos AutoUpdater.xml)
-    [string] $UrlBase = "https://update.brpdv.com.br"
+    [string] $UrlBase = "https://update.gestaoagil.com.br"
 )
 
 $ErrorActionPreference = "Stop"

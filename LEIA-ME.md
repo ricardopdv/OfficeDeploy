@@ -6,10 +6,10 @@ e publica no servidor de atualizações.
 | Arquivo | O que faz |
 |---|---|
 | `Gerar.cmd` / `Gerar.ps1` | Compila em Release, prepara cada programa e gera tudo em `publicar\` |
-| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@166.0.186.213:/var/www/update` |
+| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@76.13.236.246:/var/www/update` |
 | `GerarEEnviar.cmd` | Os dois em seguida |
 | `iss\App.iss` | Modelo do instalador (Inno Setup 6), o mesmo para todos os programas |
-| `portal\` | Portal de downloads com login (ASP.NET Core 10) em `https://update.brpdv.com.br` |
+| `portal\` | Portal de downloads com login (ASP.NET Core 10) em `https://update.gestaoagil.com.br` |
 | `PublicarPortal.ps1` | Publica o portal, o serviço `update-portal` e o nginx no servidor |
 
 ## Programas
@@ -55,7 +55,7 @@ atualizacoes\<id>\AutoUpdater.xml           versão e endereço do zip
 
 ## Atualização automática
 
-Todos os programas buscam `https://update.brpdv.com.br/atualizacoes/<id>/AutoUpdater.xml`:
+Todos os programas buscam `https://update.gestaoagil.com.br/atualizacoes/<id>/AutoUpdater.xml`:
 
 - os do OfficeManager pela rotina única `OfficeManagerDb\Helpers\Atualizacao.cs` (`VerificarAoAbrir` na abertura;
   o Gateway, que fica aberto, `Monitorar` a cada 30 minutos);
@@ -72,13 +72,19 @@ uma versão maior que a anterior e os programas instalados oferecem a atualizaç
 
 As versões já instaladas antes desta mudança continuam olhando o servidor antigo (`www.brpdv.com.br/sistemas/atualizacoes/om/…`)
 até receberem uma versão com o endereço novo (pelo instalador ou por uma última atualização publicada no servidor antigo).
-O endereço usado nos XML é o parâmetro `-UrlBase` do `Gerar.ps1` (padrão `https://update.brpdv.com.br`).
+O endereço usado nos XML é o parâmetro `-UrlBase` do `Gerar.ps1` (padrão `https://update.gestaoagil.com.br`).
 
 ## Portal de downloads (`portal\`)
 
-Os técnicos entram em `https://update.brpdv.com.br` com o **mesmo e-mail e senha do portal das revendas**: o portal
-faz o mesmo login do `RevendasRazor` (`POST api/Accounts/Login` do site, chamado dentro do servidor em
-`http://localhost:8000`) e só deixa entrar quem tem o papel **Admin** ou **Revenda** (os mesmos do portal das revendas).
+Os técnicos entram em `https://update.gestaoagil.com.br` com o **mesmo e-mail e senha do portal das revendas**: o portal
+faz o mesmo login do `RevendasRazor` (`POST api/Accounts/Login` do site) e só deixa entrar quem tem o papel
+**Admin** ou **Revenda** (os mesmos do portal das revendas).
+
+A API das revendas fica no servidor do brpdv.com.br (166.0.186.213) e lá só responde por HTTP. Para a senha não
+trafegar aberta entre os dois servidores, o portal chama `https://update.brpdv.com.br/api/Accounts/Login`: no servidor
+antigo, o nginx `portal\deploy\brpdv-antigo.conf` (em `/etc/nginx/conf.d/update.conf` de lá) libera só essa rota, só
+para o IP do servidor novo, e redireciona o resto de `update.brpdv.com.br` para `update.gestaoagil.com.br` (programas
+que ainda tenham o endereço antigo continuam recebendo as atualizações).
 
 - Lista os instaladores do `instaladores.json`; o download exige login e é entregue pelo nginx (`X-Accel-Redirect`
   para a location interna `/_instaladores/`); `/instaladores/` direto não abre.
@@ -93,7 +99,7 @@ faz o mesmo login do `RevendasRazor` (`POST api/Accounts/Login` do site, chamado
 
 `/etc/nginx/conf.d/update.conf` (cópia em `portal\deploy\update.conf`), raiz `/var/www/update`:
 
-- `https://update.brpdv.com.br/atualizacoes/…` público (o AutoUpdater dos programas baixa sem login),
+- `https://update.gestaoagil.com.br/atualizacoes/…` público (o AutoUpdater dos programas baixa sem login),
   `AutoUpdater.xml` sem cache; também por `http://` (Windows antigos sem TLS 1.2);
 - todo o resto vai para o portal; em `http://` redireciona para `https://`;
 - certificado do Let's Encrypt (certbot, renovação automática).
@@ -115,7 +121,7 @@ A conexão daqui sobe a ~100 KB/s: o primeiro envio (~2 GB) leva horas; os segui
 A chave SSH (no PowerShell, uma vez; pede a senha do root):
 
 ```
-Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@166.0.186.213 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@76.13.236.246 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 ## Requisitos
