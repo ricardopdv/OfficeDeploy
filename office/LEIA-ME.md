@@ -21,8 +21,10 @@ fora ~63 min e os Gateways reenviaram o que acumularam).
 
 ## No servidor antigo
 
-- API do office parada e desligada; o nginx do office repassa o `/api` para o servidor novo enquanto houver
-  Gateway com o DNS antigo em cache. Desligar o repasse quando os envios pararem de chegar por lá.
+- API do office parada e desligada. O repasse do `/api` para o servidor novo ficou ligado até os Gateways
+  renovarem o DNS (com `keepalive_requests 50; keepalive_timeout 10s;` para forçar novas conexões); zerou às
+  07:51 e foi desligado em 19/11/2026 às 09:36 (`officev2.conf` e `revendas.conf` guardados em
+  `/root/nginx-*.conf.desligado-20261119093619`; para religar, copiar de volta para `/etc/nginx/conf.d/`).
 - Postgres fechado para a internet (só `localhost`); o banco `om` de lá fica como cópia de segurança.
 
 ## Problema que já existia (não é da mudança)
