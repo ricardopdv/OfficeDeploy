@@ -8,6 +8,7 @@ de atualização; só o DNS muda.
 | Arquivo | O que é |
 |---|---|
 | `revendas.conf`, `cotacoes.conf` | nginx do servidor novo (`/etc/nginx/conf.d/`): página estática + `/api` para a API |
+| `licencas.conf` | nginx de `licencas.gestaoagil.com.br`: só a API, por HTTPS (o endereço dos programas novos) |
 | `kestrel-site.service` | serviço da API no servidor novo (`/etc/systemd/system/`) |
 | `Virada.ps1` | a virada (banco, servidor antigo redirecionando) e depois o certificado |
 
@@ -45,6 +46,8 @@ no banco novo nesse meio tempo fica só lá).
 
 ## Passo 3 (depois)
 
-- Endereço novo com HTTPS (ex.: `licencas.gestaoagil.com.br`) nas próximas versões do Caixa e do OfficeManager; o
-  `revendas.brpdv.com.br` continua para quem não atualizou.
+- **Endereço novo com HTTPS (19/11/2026):** `https://licencas.gestaoagil.com.br/api/` (`licencas.conf`, só a API,
+  certificado do certbot). O Caixa e o OfficeManager (`Startup.exe`) tentam esse endereço primeiro e, se não
+  conseguirem (Windows sem TLS 1.2, DNS), `http://revendas.brpdv.com.br/api/` (`Processos.ServidoresLicenca`, no
+  `BrPDV.Lib` dos dois repositórios). O `revendas.brpdv.com.br` continua para quem não atualizou.
 - Desligar no antigo o MariaDB exposto (o banco `brpdv` fica sem uso lá) depois de algumas semanas.
