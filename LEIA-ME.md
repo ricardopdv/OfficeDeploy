@@ -81,9 +81,10 @@ faz o mesmo login do `RevendasRazor` (`POST api/Accounts/Login` do site) e só d
 **Admin** ou **Revenda** (os mesmos do portal das revendas).
 
 A API das revendas (`kestrel-site`) está no mesmo servidor desde a virada das revendas (`revendas\LEIA-ME.md`): o
-portal chama `http://127.0.0.1:8000/api/Accounts/Login`, sem a senha sair da máquina. No servidor antigo, o nginx
-`portal\deploy\brpdv-antigo.conf` (em `/etc/nginx/conf.d/update.conf` de lá) só redireciona `update.brpdv.com.br`
-para `update.gestaoagil.com.br` (programas que ainda tenham o endereço antigo continuam recebendo as atualizações).
+portal chama `http://127.0.0.1:8000/api/Accounts/Login`, sem a senha sair da máquina. O redirecionamento de
+`update.brpdv.com.br` para `update.gestaoagil.com.br` no servidor antigo foi removido em 19/11/2026 (guardado em
+`/root/nginx-update.conf.desligado-20261119094310` de lá): programas com o endereço antigo não se atualizam mais
+sozinhos e precisam ser reinstalados pelo portal.
 
 - Lista os instaladores do `instaladores.json`; o download exige login e é entregue pelo nginx (`X-Accel-Redirect`
   para a location interna `/_instaladores/`); `/instaladores/` direto não abre.
