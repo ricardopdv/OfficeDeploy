@@ -31,6 +31,19 @@ Os dois caixas geram `Caixa.exe`, por isso cada um busca a atualização na sua 
 (exe, dll, .config, `Schemas`, `Fonts`, `pt-BR`); a configuração do cliente (`CliSiTef.ini`, `ACBrLib.ini`,
 `Logocli.png`) e a `CalcRT` ficam de fora (vêm no instalador).
 
+### Caixa em .NET 10 (teste)
+
+| Id | Programa | Origem | Pasta no cliente |
+|---|---|---|---|
+| `caixanet` | Caixa NFCe .NET 10 (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstalador.cmd`, `saida\Release\Caixa`) | `D:\Caixa` |
+| `caixanetgestao` | Caixa NFCe Gestão .NET 10 (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstaladorGestao.cmd`, `saida\Release\CaixaGestao`) | `D:\Caixa` |
+
+Esses dois ficam **fora** da geração padrão e só são gerados com `-Programas caixanet,caixanetgestao`.
+- **Canal de atualização próprio:** o caixa convertido busca a atualização em `atualizacoes/caixanet` e `atualizacoes/caixanetgestao`, então os caixas de produção nunca recebem esta versão.
+- **Runtime:** o instalador de teste instala o runtime .NET 10 Desktop x86 quando ele não está na máquina.
+- **Pacote:** leva também os `*.runtimeconfig.json` e `*.deps.json`.
+- **Versão:** no .NET 10 o `Caixa.exe` é só o lançador nativo, por isso a versão é lida do `Caixa.dll`.
+
 ## Calculadora da reforma tributária (CalcRT) e Java 21
 
 O OfficeManager e o PreVenda rodam ao abrir `java -jar api-regime-geral.jar` na pasta `.\CalcRT` do programa

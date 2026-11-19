@@ -31,6 +31,7 @@ Set-StrictMode -Version 2
 $Raiz      = $PSScriptRoot
 $OM        = "D:\Desenv\IA\OfficeManager"          # Source\ (fontes) e Release\ (saida das compilacoes)
 $CaixaRepo = "D:\Desenv\IA\Caixa"                  # repositorio do Caixa (setup\GerarInstalador.cmd)
+$CaixaNetRepo = "D:\Desenv\IA\CaixaNet"            # o caixa em .NET 10 (branch dotnet-moderno), em teste
 $Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/update
 $Preparo   = Join-Path $Raiz "preparo"             # copia limpa de cada programa antes de empacotar
 $Logs      = Join-Path $Raiz "logs"
@@ -69,6 +70,14 @@ $Lista = @(
        Icone = "src\Caixa\icon_app.ico" },
     @{ Id = "caixagestao";     Nome = "Caixa NFCe (Gestao)";        Caixa = $true;
        Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao.exe"; Release = "saida\Release\CaixaGestao";
+       Icone = "src\Caixa\icon_app.ico" },
+    # o caixa em .NET 10 (D:\Desenv\IA\CaixaNet, branch dotnet-moderno), EM TESTE: canal proprio (atualizacoes/caixanet e
+    # caixanetgestao), para os caixas de producao nunca receberem esta versao. Nao entra em "todos": so com -Programas.
+    @{ Id = "caixanet";        Nome = "Caixa NFCe .NET 10 (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true;
+       Script = "setup\GerarInstalador.cmd";       Setup = "Setup Caixa NFCe NET10 teste.exe";        Release = "saida\Release\Caixa";
+       Icone = "src\Caixa\icon_app.ico" },
+    @{ Id = "caixanetgestao";  Nome = "Caixa NFCe Gestao .NET 10 (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true;
+       Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao NET10 teste.exe"; Release = "saida\Release\CaixaGestao";
        Icone = "src\Caixa\icon_app.ico" }
 )
 
@@ -84,6 +93,8 @@ $ArquivoVersao = @{
     caixacentral    = "$OM\Source\CaixaCentral\Properties\AssemblyInfo.cs"
     caixa           = "$CaixaRepo\src\Caixa\Properties\AssemblyInfo.cs"
     caixagestao     = "$CaixaRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
+    caixanet        = "$CaixaNetRepo\src\Caixa\Properties\AssemblyInfo.cs"
+    caixanetgestao  = "$CaixaNetRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
 }
 
 # pastas de idioma que nao vao no pacote (so pt-BR fica), como no Build\Clean.CMD
@@ -173,7 +184,10 @@ function Restaurar($arquivo, $bytes) { if ($bytes) { [IO.File]::WriteAllBytes($a
 
 function VersaoDoExe($exe) {
     # o AutoUpdater compara com a versao do assembly; o instalador usa a versao do arquivo
-    $asm = [Reflection.AssemblyName]::GetAssemblyName($exe).Version.ToString()
+    # no .NET 10 o exe e so o lancador nativo (apphost): a versao do assembly fica na dll de mesmo nome
+    $dll = [IO.Path]::ChangeExtension($exe, ".dll")
+    $alvo = if (Test-Path $dll) { $dll } else { $exe }
+    $asm = [Reflection.AssemblyName]::GetAssemblyName($alvo).Version.ToString()
     $arq = (Get-Item $exe).VersionInfo.FileVersion
     return @{ Assembly = $asm; Arquivo = $arq }
 }
@@ -195,7 +209,8 @@ function AutoUpdaterXml($id, $versao, $zip, $zipPath) {
 }
 
 # ---------------------------------------------------------------------------------------------------------------
-$escolhidos = if ($Programas) { $Lista | Where-Object { $Programas -contains $_.Id } } else { $Lista }
+# sem -Programas: todos os de producao (os de teste so quando pedidos pelo Id)
+$escolhidos = if ($Programas) { $Lista | Where-Object { $Programas -contains $_.Id } } else { $Lista | Where-Object { -not $_.ContainsKey("Teste") } }
 if (-not $escolhidos) { throw "Nenhum programa com esses nomes. Disponiveis: $(($Lista | ForEach-Object { $_.Id }) -join ', ')" }
 
 $Instaladores = Join-Path $Publicar "instaladores"
@@ -209,7 +224,8 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     Passo $prog.Nome
 
     if ($prog.ContainsKey("Caixa")) {
-        $cmd = Join-Path $CaixaRepo $prog.Script
+        $repo = if ($prog.ContainsKey("Repo")) { $prog.Repo } else { $CaixaRepo }
+        $cmd = Join-Path $repo $prog.Script
         $log = Join-Path $Logs "$($prog.Id).log"
         if (-not $SemCompilar) {
             $original = Carimbar $ArquivoVersao[$prog.Id]
@@ -219,10 +235,10 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
             }
             finally { Restaurar $ArquivoVersao[$prog.Id] $original }
         }
-        $setup = Join-Path $CaixaRepo "setup\Output\$($prog.Setup)"
+        $setup = Join-Path $repo "setup\Output\$($prog.Setup)"
         if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
         Copy-Item $setup (Join-Path $Instaladores $prog.Setup) -Force
-        $release = Join-Path $CaixaRepo $prog.Release
+        $release = Join-Path $repo $prog.Release
         $versao = VersaoDoExe (Join-Path $release "Caixa.exe")
         Write-Host "  instalador: $($prog.Setup) ($($versao.Arquivo))"
 
@@ -231,7 +247,8 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
         $pasta = Join-Path $Preparo $prog.Id
         if (Test-Path $pasta) { Remove-Item $pasta -Recurse -Force }
         New-Item -ItemType Directory $pasta | Out-Null
-        robocopy $release $pasta *.exe *.dll *.exe.config *.dll.config /NFL /NDL /NJH /NJS /NP | Out-Null
+        # *.runtimeconfig.json e *.deps.json: os do caixa em .NET 10 (no .NET Framework nao existem)
+        robocopy $release $pasta *.exe *.dll *.exe.config *.dll.config *.runtimeconfig.json *.deps.json /NFL /NDL /NJH /NJS /NP | Out-Null
         if ($LASTEXITCODE -ge 8) { throw "Falha ao copiar $release" }
         foreach ($sub in "Schemas", "Fonts", "pt-BR") {
             if (Test-Path (Join-Path $release $sub)) {
@@ -305,7 +322,7 @@ foreach ($p in $Lista) {
     $setup = if ($p.ContainsKey("Setup")) { $p.Setup } else { "Setup " + ($p.Nome -replace '[^A-Za-z0-9 ]', '') + ".exe" }
     $nomes[$setup] = $p.Nome
     if (-not $p.ContainsKey("Icone")) { continue }
-    $ico = if ($p.ContainsKey("Caixa")) { Join-Path $CaixaRepo $p.Icone } else { Join-Path "$OM\Source" $p.Icone }
+    $ico = if ($p.ContainsKey("Repo")) { Join-Path $p.Repo $p.Icone } elseif ($p.ContainsKey("Caixa")) { Join-Path $CaixaRepo $p.Icone } else { Join-Path "$OM\Source" $p.Icone }
     try {
         # o tamanho mais proximo de 64 px que o .ico tiver (a pagina mostra em 32 px; 64 fica nitido em tela de alta densidade)
         $icone = New-Object System.Drawing.Icon($ico, 64, 64)
