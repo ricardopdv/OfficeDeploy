@@ -20,7 +20,19 @@
                 @foreach (var i in Model.Itens)
                 {
                     <tr>
-                        <td data-titulo="Programa"><strong>@i.Programa</strong><div class="arquivo">@i.Arquivo</div></td>
+                        <td data-titulo="Programa">
+                            <div class="programa">
+                                @if (i.Icone.Length > 0)
+                                {
+                                    <img class="icone" src="/icone/@Uri.EscapeDataString(System.IO.Path.GetFileName(i.Icone))" alt="" width="40" height="40" loading="lazy">
+                                }
+                                else
+                                {
+                                    <span class="icone vazio"></span>
+                                }
+                                <div><strong>@i.Programa</strong><div class="arquivo">@i.Arquivo</div></div>
+                            </div>
+                        </td>
                         <td data-titulo="Versão" class="mono">@i.Versao</td>
                         <td data-titulo="Tamanho" class="num">@IndexModel.Tamanho(i.Tamanho)</td>
                         <td data-titulo="Publicado em">@(i.Data == default ? "" : i.Data.ToString("dd/MM/yyyy HH:mm"))</td>

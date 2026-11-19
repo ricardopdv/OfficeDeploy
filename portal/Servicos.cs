@@ -84,6 +84,8 @@ public sealed class Instalador
     [JsonPropertyName("tamanho")] public long Tamanho { get; set; }
     [JsonPropertyName("data")] public DateTime Data { get; set; }
     [JsonPropertyName("sha256")] public string Sha256 { get; set; } = "";
+    /// <summary>PNG do icone do programa, relativo a instaladores/ (icones/&lt;id&gt;.png); vazio se nao houver.</summary>
+    [JsonPropertyName("icone")] public string Icone { get; set; } = "";
 }
 
 /// <summary>
@@ -139,4 +141,13 @@ public sealed class Catalogo(OpcoesPortal opcoes, IWebHostEnvironment env, ILogg
         Instaladores().FirstOrDefault(i => string.Equals(i.Arquivo, arquivo, StringComparison.Ordinal));
 
     public string Caminho(Instalador i) => Path.Combine(Pasta, i.Arquivo);
+
+    /// <summary>O PNG do icone, so se for o de algum instalador do catalogo (nenhum outro arquivo da pasta e entregue).</summary>
+    public string? CaminhoIcone(string nome)
+    {
+        var item = Instaladores().FirstOrDefault(i => i.Icone.Length > 0 && string.Equals(Path.GetFileName(i.Icone), nome, StringComparison.Ordinal));
+        if (item == null) return null;
+        var caminho = Path.Combine(Pasta, item.Icone);
+        return File.Exists(caminho) ? caminho : null;
+    }
 }

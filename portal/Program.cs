@@ -86,6 +86,15 @@ app.MapGet("/baixar/{arquivo}", (string arquivo, HttpContext http, Catalogo cata
     return Results.Empty;
 }).RequireAuthorization();
 
+// icone do programa na lista (PNG pequeno, entregue pelo proprio app)
+app.MapGet("/icone/{nome}", (string nome, HttpContext http, Catalogo catalogo) =>
+{
+    var caminho = catalogo.CaminhoIcone(nome);
+    if (caminho == null) return Results.NotFound();
+    http.Response.Headers.CacheControl = "private, max-age=3600";
+    return Results.File(caminho, "image/png", lastModified: File.GetLastWriteTimeUtc(caminho));
+}).RequireAuthorization();
+
 app.MapPost("/sair", async (HttpContext http) =>
 {
     await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

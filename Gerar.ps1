@@ -60,9 +60,11 @@ $Lista = @(
     # o Caixa tem o proprio instalador (com o MariaDB), gerado pelo repositorio do Caixa; aqui sai tambem o pacote de atualizacao
     # (o caixa completo busca em atualizacoes/caixa e o so do Gestao em atualizacoes/caixagestao: os dois geram Caixa.exe)
     @{ Id = "caixa";           Nome = "Caixa NFCe (OfficeManager)"; Caixa = $true;
-       Script = "setup\GerarInstalador.cmd";       Setup = "Setup Caixa NFCe.exe";        Release = "saida\Release\Caixa" },
+       Script = "setup\GerarInstalador.cmd";       Setup = "Setup Caixa NFCe.exe";        Release = "saida\Release\Caixa";
+       Icone = "src\Caixa\icon_app.ico" },
     @{ Id = "caixagestao";     Nome = "Caixa NFCe (Gestao)";        Caixa = $true;
-       Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao.exe"; Release = "saida\Release\CaixaGestao" }
+       Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao.exe"; Release = "saida\Release\CaixaGestao";
+       Icone = "src\Caixa\icon_app.ico" }
 )
 
 # AssemblyInfo de cada programa: recebe a versao do deploy antes de compilar e volta ao original depois
@@ -264,12 +266,29 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     $resumo += [pscustomobject]@{ Programa = $prog.Nome; Versao = $versao.Arquivo; Instalador = "$arquivo.exe"; Atualizacao = "atualizacoes/$($prog.Id)/" }
 }
 
-# catalogo dos instaladores para o portal de downloads (portal\): nome do programa, versao, tamanho, data e SHA-256.
+# catalogo dos instaladores para o portal de downloads (portal\): nome do programa, versao, tamanho, data, SHA-256 e icone.
 # Inclui os instaladores de rodadas anteriores que continuam na pasta (rodando so alguns programas com -Programas).
+# O icone de cada programa (o .ico do projeto) vai como PNG em instaladores\icones\<id>.png para a lista do portal.
 $nomes = @{}
+$icones = @{}
+$pastaIcones = Join-Path $Instaladores "icones"
+if (Test-Path $pastaIcones) { Remove-Item $pastaIcones -Recurse -Force }
+New-Item -ItemType Directory -Force $pastaIcones | Out-Null
+Add-Type -AssemblyName System.Drawing
 foreach ($p in $Lista) {
     $setup = if ($p.ContainsKey("Setup")) { $p.Setup } else { "Setup " + ($p.Nome -replace '[^A-Za-z0-9 ]', '') + ".exe" }
     $nomes[$setup] = $p.Nome
+    if (-not $p.ContainsKey("Icone")) { continue }
+    $ico = if ($p.ContainsKey("Caixa")) { Join-Path $CaixaRepo $p.Icone } else { Join-Path "$OM\Source" $p.Icone }
+    try {
+        # o tamanho mais proximo de 64 px que o .ico tiver (a pagina mostra em 32 px; 64 fica nitido em tela de alta densidade)
+        $icone = New-Object System.Drawing.Icon($ico, 64, 64)
+        $bmp = $icone.ToBitmap()
+        try { $bmp.Save((Join-Path $pastaIcones "$($p.Id).png"), [System.Drawing.Imaging.ImageFormat]::Png) }
+        finally { $bmp.Dispose(); $icone.Dispose() }
+        $icones[$setup] = "icones/$($p.Id).png"
+    }
+    catch { Write-Warning "Icone de $($p.Nome) ($ico): $($_.Exception.Message)" }
 }
 $catalogo = @(Get-ChildItem $Instaladores -Filter *.exe | Sort-Object Name | ForEach-Object {
     [ordered]@{
@@ -279,6 +298,7 @@ $catalogo = @(Get-ChildItem $Instaladores -Filter *.exe | Sort-Object Name | For
         tamanho  = $_.Length
         data     = $_.LastWriteTime.ToString("s")
         sha256   = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+        icone    = if ($icones.ContainsKey($_.Name)) { $icones[$_.Name] } else { "" }
     }
 })
 [IO.File]::WriteAllText((Join-Path $Instaladores "instaladores.json"), (ConvertTo-Json $catalogo -Depth 3), (New-Object Text.UTF8Encoding $false))
