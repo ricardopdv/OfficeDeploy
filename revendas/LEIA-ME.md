@@ -22,7 +22,7 @@ de atualização; só o DNS muda.
 - Páginas `/var/www/revendas` e `/var/www/cotacoes` copiadas; nginx com os mesmos sites (HTTP, como no antigo).
 - Conferido: as mesmas respostas da API nos dois servidores (licença, login, consultas) e a mesma página.
 
-**API em .NET 10 (19/11/2026):** publicada a partir do código-fonte (`Web Legacy\DotNet\ASP\Site\site`), que só
+**API em .NET 10 (19/11/2026):** publicada a partir do código-fonte (`D:\Desenv\IA\Site\site`), que só
 diferia do publicado em .NET 8 pelo `site.csproj` (framework e pacotes). O FastReport 2026 exigiu
 `services.AddFastReport()` no `Startup.cs`. Antes da troca rodou lado a lado (porta 8002, mesmo banco) com as mesmas
 respostas da versão .NET 8 (licença real, login, consultas, formato das datas). A versão .NET 8 ficou em

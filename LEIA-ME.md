@@ -14,7 +14,7 @@ e publica no servidor de atualizações.
 
 ## Programas
 
-| Id | Programa | Origem (`D:\Desenv\C#\OfficeManager\Release\…`) | Instala em |
+| Id | Programa | Origem (`D:\Desenv\IA\OfficeManager\Release\…`) | Instala em |
 |---|---|---|---|
 | `officemanager` | OfficeManager (+ Configurador e Startup) | `OfficeManager` | `C:\OfficeManager` |
 | `gateway` | OfficeManager Gateway | `OfficeManagerGw` | `C:\OfficeManager\Gateway` |

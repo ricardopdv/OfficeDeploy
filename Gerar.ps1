@@ -27,7 +27,7 @@ Set-StrictMode -Version 2
 # Configuracao
 # ---------------------------------------------------------------------------------------------------------------
 $Raiz      = $PSScriptRoot
-$OM        = "D:\Desenv\C#\OfficeManager"          # Source\ (fontes) e Release\ (saida das compilacoes)
+$OM        = "D:\Desenv\IA\OfficeManager"          # Source\ (fontes) e Release\ (saida das compilacoes)
 $CaixaRepo = "D:\Desenv\IA\Caixa"                  # repositorio do Caixa (setup\GerarInstalador.cmd)
 $Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/update
 $Preparo   = Join-Path $Raiz "preparo"             # copia limpa de cada programa antes de empacotar
