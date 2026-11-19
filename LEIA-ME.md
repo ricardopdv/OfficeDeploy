@@ -80,11 +80,10 @@ Os técnicos entram em `https://update.gestaoagil.com.br` com o **mesmo e-mail e
 faz o mesmo login do `RevendasRazor` (`POST api/Accounts/Login` do site) e só deixa entrar quem tem o papel
 **Admin** ou **Revenda** (os mesmos do portal das revendas).
 
-A API das revendas fica no servidor do brpdv.com.br (166.0.186.213) e lá só responde por HTTP. Para a senha não
-trafegar aberta entre os dois servidores, o portal chama `https://update.brpdv.com.br/api/Accounts/Login`: no servidor
-antigo, o nginx `portal\deploy\brpdv-antigo.conf` (em `/etc/nginx/conf.d/update.conf` de lá) libera só essa rota, só
-para o IP do servidor novo, e redireciona o resto de `update.brpdv.com.br` para `update.gestaoagil.com.br` (programas
-que ainda tenham o endereço antigo continuam recebendo as atualizações).
+A API das revendas (`kestrel-site`) está no mesmo servidor desde a virada das revendas (`revendas\LEIA-ME.md`): o
+portal chama `http://127.0.0.1:8000/api/Accounts/Login`, sem a senha sair da máquina. No servidor antigo, o nginx
+`portal\deploy\brpdv-antigo.conf` (em `/etc/nginx/conf.d/update.conf` de lá) só redireciona `update.brpdv.com.br`
+para `update.gestaoagil.com.br` (programas que ainda tenham o endereço antigo continuam recebendo as atualizações).
 
 - Lista os instaladores do `instaladores.json`; o download exige login e é entregue pelo nginx (`X-Accel-Redirect`
   para a location interna `/_instaladores/`); `/instaladores/` direto não abre.

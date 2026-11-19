@@ -24,7 +24,7 @@ de atualização; só o DNS muda.
 O código-fonte da API (`Web Legacy\DotNet\ASP\Site\site`) já está em .NET 10, mas o publicado é .NET 8 (sem
 suporte da Microsoft desde 10/11/2026). Publicar a versão .NET 10 é um passo separado (muda o programa em produção).
 
-## Passo 2: a virada
+## Passo 2: a virada (feita em 19/11/2026, 01:17)
 
 1. `.\Virada.ps1`: para a API antiga, copia o banco de novo, religa a nova e faz o nginx antigo mandar o `/api`
    (e o login do portal de downloads) para o servidor novo. A partir daqui tudo grava no banco novo, mesmo quem

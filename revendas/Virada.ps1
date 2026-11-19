@@ -51,8 +51,11 @@ if ($Certificado) {
     Write-Host "=== Certificado de revendas.brpdv.com.br no servidor novo" -ForegroundColor Cyan
     Em $Novo @'
 set -e
-ip=$(getent ahostsv4 revendas.brpdv.com.br | awk 'NR==1{print $1}')
-[ "$ip" = "76.13.236.246" ] || { echo "o DNS de revendas.brpdv.com.br ainda aponta para $ip"; exit 1; }
+# confere nos DNS publicos (o resolvedor do proprio servidor pode guardar o IP antigo ate o TTL vencer)
+for r in 8.8.8.8 1.1.1.1; do
+  ip=$(dig +short revendas.brpdv.com.br @$r | tail -1)
+  [ "$ip" = "76.13.236.246" ] || { echo "o DNS de revendas.brpdv.com.br ainda aponta para $ip (em $r)"; exit 1; }
+done
 certbot --nginx -d revendas.brpdv.com.br --non-interactive --agree-tos --keep-until-expiring --no-redirect
 nginx -t && systemctl reload nginx
 '@

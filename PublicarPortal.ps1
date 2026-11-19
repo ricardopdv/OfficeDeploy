@@ -7,8 +7,8 @@
   3. instala/atualiza o servico update-portal (systemd, usuario www-data, 127.0.0.1:8010), o certificado (certbot,
      na primeira vez; o DNS ja precisa apontar para o servidor) e o nginx
      (/etc/nginx/conf.d/update.conf; com backup e volta automatica se o nginx -t falhar);
-  4. no servidor antigo (brpdv.com.br), o nginx de update.brpdv.com.br (portal\deploy\brpdv-antigo.conf): o login
-     das revendas por HTTPS so para o servidor novo e o resto redirecionado para o endereco novo;
+  4. no servidor antigo (brpdv.com.br), o nginx de update.brpdv.com.br (portal\deploy\brpdv-antigo.conf): o
+     redirecionamento para o endereco novo;
   5. confere: o servico responde e o nginx entrega a pagina de login.
 
 .EXAMPLE
@@ -93,7 +93,7 @@ systemctl is-active update-portal
 "@
 Remoto ($instalar -replace "`r", "")
 
-Write-Host "=== Servidor antigo (update.brpdv.com.br: login por HTTPS e redirecionamento)" -ForegroundColor Cyan
+Write-Host "=== Servidor antigo (update.brpdv.com.br: redirecionamento para o endereco novo)" -ForegroundColor Cyan
 & $scp @opcoes -q (Join-Path $Raiz "portal\deploy\brpdv-antigo.conf") "${ServidorAntigo}:/tmp/update.conf"
 if ($LASTEXITCODE -ne 0) { throw "Falha no envio para o servidor antigo." }
 $antigo = @"

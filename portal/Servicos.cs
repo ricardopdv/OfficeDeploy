@@ -7,7 +7,7 @@ namespace Downloads;
 
 public sealed class OpcoesPortal
 {
-    public string ApiLogin { get; set; } = "https://update.brpdv.com.br/api/Accounts/Login";
+    public string ApiLogin { get; set; } = "http://127.0.0.1:8000/api/Accounts/Login";
     public string[] Papeis { get; set; } = ["Admin", "Revenda"];
     public string Pasta { get; set; } = "/var/www/update";
     public bool XAccel { get; set; } = true;
