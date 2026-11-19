@@ -42,7 +42,7 @@ $CalcRT    = "$OM\Release\OfficeManager\CalcRT"
 # Release: pasta em $OM\Release; Projetos: compilados nessa ordem (todos AnyCPU); Destino: pasta padrao da instalacao
 $Lista = @(
     @{ Id = "officemanager";   Nome = "OfficeManager";      Release = "OfficeManager";       Exe = "OfficeManager.exe";
-       Projetos = "OfficeManager\OfficeManager.csproj", "Configurador\Configurador.csproj", "Startup\Startup.csproj";
+       Projetos = "OfficeManager\OfficeManager.csproj", "Configurador\Configurador.csproj";
        Icone = "OfficeManager\charts-colors-3d.ico";    Destino = "C:\OfficeManager";              AppId = "5F714C58-8F3C-4312-B21C-826CAA686FA4"; CalcRT = $true },
     @{ Id = "gateway";         Nome = "OfficeManager Gateway"; Release = "OfficeManagerGw";   Exe = "OfficeManagerGw.exe";
        Projetos = @("OfficeManagerGw\OfficeManagerGw.csproj");

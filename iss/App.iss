@@ -49,6 +49,11 @@ Name: "atalho"; Description: "Criar atalho na area de trabalho"; Flags: checkedo
 Name: "iniciar"; Description: "Abrir o {#Nome} junto com o Windows"; Flags: checkedonce
 #endif
 
+[InstallDelete]
+; o Startup.exe (verificacao de licenca em 32 bits, por causa da HID.dll) acabou: a licenca e verificada no OfficeManager
+Type: files; Name: "{app}\Startup.exe"
+Type: files; Name: "{app}\Startup.exe.config"
+
 [Files]
 ; tudo e substituido, inclusive o .exe.config (tem os redirecionamentos de versao das DLLs);
 ; a configuracao do cliente fica no registro e nos arquivos que o programa cria, que nao estao no pacote

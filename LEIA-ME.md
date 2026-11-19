@@ -16,7 +16,7 @@ e publica no servidor de atualizações.
 
 | Id | Programa | Origem (`D:\Desenv\IA\OfficeManager\Release\…`) | Instala em |
 |---|---|---|---|
-| `officemanager` | OfficeManager (+ Configurador e Startup) | `OfficeManager` | `C:\OfficeManager` |
+| `officemanager` | OfficeManager (+ Configurador) | `OfficeManager` | `C:\OfficeManager` |
 | `gateway` | OfficeManager Gateway | `OfficeManagerGw` | `C:\OfficeManager\Gateway` |
 | `officemanagerbi` | OfficeManager BI | `OfficeManagerBI` | `C:\OfficeManager\BI` |
 | `prevenda` | PreVenda (+ Configurador) | `PreVenda` | `C:\OfficeManager\PreVenda` |
