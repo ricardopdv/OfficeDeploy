@@ -21,8 +21,13 @@ de atualização; só o DNS muda.
 - Páginas `/var/www/revendas` e `/var/www/cotacoes` copiadas; nginx com os mesmos sites (HTTP, como no antigo).
 - Conferido: as mesmas respostas da API nos dois servidores (licença, login, consultas) e a mesma página.
 
-O código-fonte da API (`Web Legacy\DotNet\ASP\Site\site`) já está em .NET 10, mas o publicado é .NET 8 (sem
-suporte da Microsoft desde 10/11/2026). Publicar a versão .NET 10 é um passo separado (muda o programa em produção).
+**API em .NET 10 (19/11/2026):** publicada a partir do código-fonte (`Web Legacy\DotNet\ASP\Site\site`), que só
+diferia do publicado em .NET 8 pelo `site.csproj` (framework e pacotes). O FastReport 2026 exigiu
+`services.AddFastReport()` no `Startup.cs`. Antes da troca rodou lado a lado (porta 8002, mesmo banco) com as mesmas
+respostas da versão .NET 8 (licença real, login, consultas, formato das datas). A versão .NET 8 ficou em
+`/var/www/site.net8` (voltar: parar o `kestrel-site`, trocar as pastas e iniciar); o `aspnetcore-runtime-8.0` pode
+sair do servidor quando ela não for mais necessária. O relatório `api/Reports/PedidoFornecedor` já não funcionava
+(a pasta `Reports` não é publicada) e não exige login.
 
 ## Passo 2: a virada (feita em 19/11/2026, 01:17)
 
