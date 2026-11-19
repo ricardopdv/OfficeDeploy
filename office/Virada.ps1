@@ -29,6 +29,10 @@ param(
     [switch] $Voltar
 )
 
+# OBSOLETO: virada de 19/11/2026 (166.0.186.213 antigo -> 76.13.236.246). Desde a tarde de 19/11/2026 o 166.0.186.213
+# e o servidor de producao: rodar isto pararia a API dele e copiaria o banco para o 76.13.236.246.
+throw "Virada.ps1 obsoleto: o 166.0.186.213 e hoje o servidor de producao (veja o LEIA-ME.md do OfficeDeploy)."
+
 $ErrorActionPreference = "Stop"
 $ssh = "$env:WINDIR\System32\OpenSSH\ssh.exe"
 if (-not (Test-Path $ssh)) { $ssh = "ssh" }

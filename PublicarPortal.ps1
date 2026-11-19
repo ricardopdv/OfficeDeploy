@@ -13,7 +13,7 @@
   .\PublicarPortal.ps1
 #>
 param(
-    [string] $Servidor       = "root@76.13.236.246",
+    [string] $Servidor       = "root@166.0.186.213",
     [string] $Destino        = "/var/www/update-portal",
     [string] $Dominio        = "update.gestaoagil.com.br"
 )
