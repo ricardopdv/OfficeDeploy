@@ -6,7 +6,7 @@ e publica no servidor de atualizações.
 | Arquivo | O que faz |
 |---|---|
 | `Gerar.cmd` / `Gerar.ps1` | Compila em Release, prepara cada programa e gera tudo em `publicar\` |
-| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@76.13.236.246:/var/www/update` |
+| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@166.0.186.213:/var/www/update` |
 | `GerarEEnviar.cmd` | Os dois em seguida |
 | `iss\App.iss` | Modelo do instalador (Inno Setup 6), o mesmo para todos os programas |
 | `portal\` | Portal de downloads com login (ASP.NET Core 10) em `https://update.gestaoagil.com.br` |
@@ -30,6 +30,27 @@ Os dois caixas geram `Caixa.exe`, por isso cada um busca a atualização na sua 
 `atualizacoes/caixagestao`, em `Inicializacao.UrlAtualizacao`). O pacote de atualização do caixa leva só o programa
 (exe, dll, .config, `Schemas`, `Fonts`, `pt-BR`); a configuração do cliente (`CliSiTef.ini`, `ACBrLib.ini`,
 `Logocli.png`) e a `CalcRT` ficam de fora (vêm no instalador).
+
+## Calculadora da reforma tributária (CalcRT) e Java 21
+
+O OfficeManager e o PreVenda rodam ao abrir `java -jar api-regime-geral.jar` na pasta `.\CalcRT` do programa
+(`OfficeManagerDFe\Reforma\VerificarCalculadoraReforma.cs`), com o `java` do PATH. Por isso os instaladores dos dois
+(`CalcRT = $true` na `$Lista`) levam:
+
+- a `CalcRT` em `{app}\CalcRT`, a mesma para os dois, copiada de `OfficeManager\Release\OfficeManager\CalcRT` sem a
+  cópia antiga (`Old\`) e sem os temporários do SQLite (`*.db-shm`, `*.db-wal`). Só troca arquivos mais novos que os
+  instalados; o que estiver preso pela calculadora em execução é trocado no próximo reinício do Windows;
+- o JDK 21 (`-Jdk`, padrão: o mesmo do instalador do Caixa, `Caixa\setup\Externos\Utils\JDK\jdk-21_windows-x64_bin.exe`),
+  instalado em modo silencioso só se a máquina não tiver Java 21 ou maior registrado e um `java.exe` no PATH. Quando o
+  JDK é instalado, o instalador não oferece abrir o programa no fim (ele ainda tem o PATH de antes); pelo atalho abre normal.
+
+O PreVenda usa a calculadora do OfficeManager: só um java com o `api-regime-geral.jar` roda na máquina, e quem abrir
+primeiro inicia. A cópia na pasta do PreVenda serve para quando ele abre antes do OfficeManager ou numa máquina sem ele;
+sem ela, o programa procura a `CalcRT` da pasta de cima (`C:\OfficeManager\CalcRT` para `C:\OfficeManager\PreVenda`).
+Se a calculadora não iniciar (sem Java, Java antigo, pasta faltando), o programa avisa uma vez e segue.
+
+A `CalcRT` nunca vai no pacote de atualização (`atualizacoes\<id>\<id>.zip`): são ~100 MB que quase nunca mudam e o
+jar fica preso pela calculadora em execução. Uma `CalcRT` nova chega aos clientes pelo instalador.
 
 A pasta de instalação pode ser trocada na instalação; numa atualização o instalador usa a pasta da instalação anterior.
 Pastas padrão, ícones e quais projetos entram em cada programa ficam na lista `$Lista`, no início do `Gerar.ps1`.
@@ -59,7 +80,12 @@ Todos os programas buscam `https://update.gestaoagil.com.br/atualizacoes/<id>/Au
 
 - os do OfficeManager pela rotina única `OfficeManagerDb\Helpers\Atualizacao.cs` (`VerificarAoAbrir` na abertura;
   o Gateway, que fica aberto, `Monitorar` a cada 30 minutos);
-- os caixas pelo `Inicializacao.UrlAtualizacao` (janela padrão do AutoUpdater: atualizar, lembrar depois ou pular).
+- os caixas pelo `Inicializacao.UrlAtualizacao`, com as telas do próprio caixa e o `Caixa.Atualizador.exe` (que vai no
+  pacote; veja "Atualização automática" no `LEIA-ME.md` do Caixa). Os caixas instalados antes dele recebem a primeira
+  atualização pela janela antiga do AutoUpdater.
+
+Cada `AutoUpdater.xml` leva o SHA-256 do zip (`<checksum algorithm="SHA256">`): o atualizador do Caixa e o AutoUpdater.NET
+dos outros programas não instalam um pacote baixado pela metade ou diferente do publicado.
 
 A atualização **não é obrigatória** (`<mandatory>false</mandatory>`): a cada versão nova o usuário é avisado (versão
 instalada e nova) e escolhe se atualiza agora. Recusada, a mesma versão não é oferecida de novo enquanto o programa
@@ -108,8 +134,9 @@ sozinhos e precisam ser reinstalados pelo portal.
 
 A origem é a pasta `Release` do programa, depois de compilar os seus projetos. Essa pasta também tem arquivos
 que não saem da compilação (DFe, SQLUpdate, ReportsBI, CalcRT, Layouts, Dashboards, OfficeManagerAc.dll), por isso
-o pacote parte dela. Ficam de fora: `*.pdb`, `*.bak`, `*.vshost.*`, as pastas de idioma (só `pt-BR` fica) e a
-documentação XML das DLLs (`Nome.xml` ao lado de `Nome.dll`). O resultado fica em `preparo\<id>`.
+o pacote parte dela. Ficam de fora: `*.pdb`, `*.bak`, `*.vshost.*`, as pastas de idioma (só `pt-BR` fica), a
+documentação XML das DLLs (`Nome.xml` ao lado de `Nome.dll`) e a `CalcRT` (vai à parte no instalador, de
+`preparo\_calcrt`). O resultado fica em `preparo\<id>`.
 
 ## Envio (SSH)
 
@@ -121,10 +148,19 @@ A conexão daqui sobe a ~100 KB/s: o primeiro envio (~2 GB) leva horas; os segui
 A chave SSH (no PowerShell, uma vez; pede a senha do root):
 
 ```
-Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@76.13.236.246 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@166.0.186.213 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
+
+## Servidor
+
+Desde 19/11/2026 (à tarde) tudo roda em **166.0.186.213** (`vps.brpdv.com.br`): update, portal, revendas,
+licenças, office, Gestão e BrZap, com um PostgreSQL 18 só (porta 5432) e o MariaDB, os dois só locais. O
+76.13.236.246 ficou só repassando para o novo enquanto o DNS propaga. As pastas `office\` e `revendas\` contam as
+viradas anteriores do mesmo dia (do 166.0.186.213 antigo para o 76.13.236.246); os `Virada.ps1` delas não servem
+mais. As configurações de nginx e systemd do repositório são as que estão no servidor.
 
 ## Requisitos
 
-Visual Studio (MSBuild, .NET Framework 4.8 e DevExpress 24.1), Inno Setup 6, OpenSSH do Windows.
+Visual Studio (MSBuild, .NET Framework 4.8 e DevExpress 24.1), Inno Setup 6, OpenSSH do Windows e o instalador do
+JDK 21 (veja "Calculadora da reforma tributária").
 Os logs de compilação e do Inno Setup ficam em `logs\`.

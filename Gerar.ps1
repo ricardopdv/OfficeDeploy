@@ -17,7 +17,9 @@ param(
     # so refaz o instaladores.json (catalogo do portal) com os instaladores que ja estao em publicar\instaladores
     [switch] $SoCatalogo,
     # endereco publico da pasta /var/www/update (usado nos AutoUpdater.xml)
-    [string] $UrlBase = "https://update.gestaoagil.com.br"
+    [string] $UrlBase = "https://update.gestaoagil.com.br",
+    # instalador do JDK 21 que vai nos instaladores do OfficeManager e do PreVenda (o mesmo do instalador do Caixa)
+    [string] $Jdk = "D:\Desenv\IA\Caixa\setup\Externos\Utils\JDK\jdk-21_windows-x64_bin.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,13 +34,16 @@ $CaixaRepo = "D:\Desenv\IA\Caixa"                  # repositorio do Caixa (setup
 $Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/update
 $Preparo   = Join-Path $Raiz "preparo"             # copia limpa de cada programa antes de empacotar
 $Logs      = Join-Path $Raiz "logs"
+# calculadora da reforma tributaria (java -jar api-regime-geral.jar), a mesma no OfficeManager e no PreVenda: vai so no
+# instalador dos programas com CalcRT = $true, em {app}\CalcRT, junto com o JDK 21; nunca no pacote de atualizacao
+$CalcRT    = "$OM\Release\OfficeManager\CalcRT"
 
 # Id: nome da pasta em atualizacoes\ (officemanager, officemanagerbi e gateway sao os nomes que os programas ja usam)
 # Release: pasta em $OM\Release; Projetos: compilados nessa ordem (todos AnyCPU); Destino: pasta padrao da instalacao
 $Lista = @(
     @{ Id = "officemanager";   Nome = "OfficeManager";      Release = "OfficeManager";       Exe = "OfficeManager.exe";
        Projetos = "OfficeManager\OfficeManager.csproj", "Configurador\Configurador.csproj", "Startup\Startup.csproj";
-       Icone = "OfficeManager\charts-colors-3d.ico";    Destino = "C:\OfficeManager";              AppId = "5F714C58-8F3C-4312-B21C-826CAA686FA4" },
+       Icone = "OfficeManager\charts-colors-3d.ico";    Destino = "C:\OfficeManager";              AppId = "5F714C58-8F3C-4312-B21C-826CAA686FA4"; CalcRT = $true },
     @{ Id = "gateway";         Nome = "OfficeManager Gateway"; Release = "OfficeManagerGw";   Exe = "OfficeManagerGw.exe";
        Projetos = @("OfficeManagerGw\OfficeManagerGw.csproj");
        Icone = "OfficeManagerGw\database_access.ico";   Destino = "C:\OfficeManager\Gateway";      AppId = "E0985E35-CCD7-4702-889E-5B39CCE697C8"; IniciarComWindows = $true },
@@ -47,7 +52,7 @@ $Lista = @(
        Icone = "OfficeManagerBI\graph_sales.ico";       Destino = "C:\OfficeManager\BI";           AppId = "CB82BCB8-727D-4F24-87C5-048A1FB1D33C" },
     @{ Id = "prevenda";        Nome = "PreVenda";           Release = "PreVenda";            Exe = "PreVenda.exe";
        Projetos = "PreVenda\PreVenda\PreVenda.csproj", "PreVenda\Configurador\Configurador.csproj";
-       Icone = "PreVenda\PreVenda\contract-employee.ico"; Destino = "C:\OfficeManager\PreVenda";   AppId = "1CFA9F99-A202-4C28-80DF-D36406E61B84" },
+       Icone = "PreVenda\PreVenda\contract-employee.ico"; Destino = "C:\OfficeManager\PreVenda";   AppId = "1CFA9F99-A202-4C28-80DF-D36406E61B84"; CalcRT = $true },
     @{ Id = "backup";          Nome = "OfficeManager Backup"; Release = "OfficeManagerBackup"; Exe = "OfficeManagerBackup.exe";
        Projetos = @("OfficeManagerBackup\OfficeManagerBackup.csproj");
        Icone = "OfficeManagerBackup\logo.ico";          Destino = "C:\OfficeManager\Backup";       AppId = "7A74BAC9-8243-4352-8E37-2105A784BDDC" },
@@ -107,11 +112,12 @@ function Compilar($projeto) {
     Write-Host "  compilado: $projeto"
 }
 
-# copia a pasta Release do programa sem o que nao vai para o cliente (simbolos, documentacao XML das DLLs, backups, outros idiomas)
+# copia a pasta Release do programa sem o que nao vai para o cliente (simbolos, documentacao XML das DLLs, backups, outros idiomas).
+# A CalcRT fica de fora: vai so no instalador (PrepararCalcRT), nunca no pacote de atualizacao (o java em execucao prende o jar)
 function Preparar($origem, $destino) {
     if (Test-Path $destino) { Remove-Item $destino -Recurse -Force }
     New-Item -ItemType Directory $destino | Out-Null
-    robocopy $origem $destino /E /NFL /NDL /NJH /NJS /NP /XF *.pdb *.bak *.vshost.* *.user /XD obj | Out-Null
+    robocopy $origem $destino /E /NFL /NDL /NJH /NJS /NP /XF *.pdb *.bak *.vshost.* *.user /XD obj (Join-Path $origem "CalcRT") | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "Falha ao copiar $origem" }
 
     foreach ($idioma in $Idiomas) {
@@ -122,6 +128,21 @@ function Preparar($origem, $destino) {
     Get-ChildItem $destino -Filter *.xml -File | Where-Object {
         (Test-Path (Join-Path $destino ($_.BaseName + ".dll"))) -or (Test-Path (Join-Path $destino ($_.BaseName + ".exe")))
     } | Remove-Item -Force
+}
+
+# copia da CalcRT para os instaladores (uma vez por execucao), sem a copia antiga (Old\) e sem os arquivos temporarios do
+# SQLite (*.db-shm, *.db-wal) que ficam quando a calculadora roda aqui
+$script:CalcRTPreparada = $null
+function PrepararCalcRT {
+    if ($script:CalcRTPreparada) { return $script:CalcRTPreparada }
+    if (-not (Test-Path (Join-Path $CalcRT "api-regime-geral.jar"))) { throw "Calculadora da reforma nao encontrada: $CalcRT\api-regime-geral.jar" }
+    if (-not (Test-Path $Jdk)) { throw "Instalador do JDK 21 nao encontrado: $Jdk (parametro -Jdk)" }
+    $destino = Join-Path $Preparo "_calcrt"
+    if (Test-Path $destino) { Remove-Item $destino -Recurse -Force }
+    robocopy $CalcRT $destino /E /NFL /NDL /NJH /NJS /NP /XF *.db-shm *.db-wal /XD (Join-Path $CalcRT "Old") | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw "Falha ao copiar $CalcRT" }
+    $script:CalcRTPreparada = $destino
+    return $destino
 }
 
 # versao do deploy no formato que os projetos ja usam: ano.mes.dia-do-ano.contador; o contador e o segundo do dia / 2
@@ -157,14 +178,18 @@ function VersaoDoExe($exe) {
     return @{ Assembly = $asm; Arquivo = $arq }
 }
 
-function AutoUpdaterXml($id, $versao, $zip) {
+# o checksum (SHA-256 do zip) e conferido pelo atualizador do Caixa e pelo AutoUpdater.NET dos outros programas
+# antes de instalar: um download pela metade ou trocado no caminho nao e instalado
+function AutoUpdaterXml($id, $versao, $zip, $zipPath) {
     $url = "$UrlBase/atualizacoes/$id/$zip"
+    $sha256 = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower()
     return @"
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
   <version>$versao</version>
   <url>$url</url>
   <mandatory>false</mandatory>
+  <checksum algorithm="SHA256">$sha256</checksum>
 </item>
 "@
 }
@@ -221,7 +246,7 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
         if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [IO.Compression.ZipFile]::CreateFromDirectory($pasta, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $false)
-        [IO.File]::WriteAllText((Join-Path $dirAtu "AutoUpdater.xml"), (AutoUpdaterXml $prog.Id $versao.Assembly $zip), (New-Object Text.UTF8Encoding $false))
+        [IO.File]::WriteAllText((Join-Path $dirAtu "AutoUpdater.xml"), (AutoUpdaterXml $prog.Id $versao.Assembly $zip $zipPath), (New-Object Text.UTF8Encoding $false))
         Write-Host "  atualizacao: atualizacoes/$($prog.Id)/$zip ($($versao.Assembly))"
 
         $resumo += [pscustomobject]@{ Programa = $prog.Nome; Versao = $versao.Arquivo; Instalador = $prog.Setup; Atualizacao = "atualizacoes/$($prog.Id)/" }
@@ -247,6 +272,7 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     $defs = @("/DAppId={{$($prog.AppId)}", "/DNome=$($prog.Nome)", "/DExe=$($prog.Exe)", "/DOrigem=$pasta", "/DPasta=$($prog.Destino)",
               "/DIcone=$(Join-Path "$OM\Source" $prog.Icone)", "/DSaida=$Instaladores", "/DArquivo=$arquivo")
     if ($prog.ContainsKey("IniciarComWindows")) { $defs += "/DIniciarComWindows=1" }
+    if ($prog.ContainsKey("CalcRT")) { $defs += "/DCalcRT=$(PrepararCalcRT)", "/DJdk=$Jdk" }
     $log = Join-Path $Logs "inno-$($prog.Id).log"
     & $ISCC /Q @defs (Join-Path $Raiz "iss\App.iss") 2>&1 | Out-File $log -Encoding utf8
     if ($LASTEXITCODE -ne 0) { Get-Content $log | Select-Object -Last 10 | ForEach-Object { Write-Host $_ -ForegroundColor Red }; throw "Falha no instalador de $($prog.Nome) (log: $log)" }
@@ -260,7 +286,7 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [IO.Compression.ZipFile]::CreateFromDirectory($pasta, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $false)
-    [IO.File]::WriteAllText((Join-Path $dirAtu "AutoUpdater.xml"), (AutoUpdaterXml $prog.Id $versao.Assembly $zip), (New-Object Text.UTF8Encoding $false))
+    [IO.File]::WriteAllText((Join-Path $dirAtu "AutoUpdater.xml"), (AutoUpdaterXml $prog.Id $versao.Assembly $zip $zipPath), (New-Object Text.UTF8Encoding $false))
     Write-Host "  atualizacao: atualizacoes/$($prog.Id)/$zip ($($versao.Assembly))"
 
     $resumo += [pscustomobject]@{ Programa = $prog.Nome; Versao = $versao.Arquivo; Instalador = "$arquivo.exe"; Atualizacao = "atualizacoes/$($prog.Id)/" }
