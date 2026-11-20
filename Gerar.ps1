@@ -78,6 +78,13 @@ $Lista = @(
        Icone = "src\Caixa\icon_app.ico" },
     @{ Id = "caixanetgestao";  Nome = "Caixa NFCe Gestao .NET 10 (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true;
        Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao NET10 teste.exe"; Release = "saida\Release\CaixaGestao";
+       Icone = "src\Caixa\icon_app.ico" },
+    # o mesmo caixa para Linux (64 bits): pacote .deb (setup\GerarDeb.ps1) e canal proprio (o caixa no Linux busca o canal + "linux")
+    @{ Id = "caixanetlinux";   Nome = "Caixa NFCe .NET 10 Linux (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true; Linux = "caixa";
+       Pacote = "caixa-nfce";        Setup = "caixa-nfce-teste_amd64.deb";        Release = "saida\Release\linux-x64\Caixa";
+       Icone = "src\Caixa\icon_app.ico" },
+    @{ Id = "caixanetgestaolinux"; Nome = "Caixa NFCe Gestao .NET 10 Linux (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true; Linux = "caixagestao";
+       Pacote = "caixa-nfce-gestao"; Setup = "caixa-nfce-gestao-teste_amd64.deb"; Release = "saida\Release\linux-x64\CaixaGestao";
        Icone = "src\Caixa\icon_app.ico" }
 )
 
@@ -95,6 +102,8 @@ $ArquivoVersao = @{
     caixagestao     = "$CaixaRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
     caixanet        = "$CaixaNetRepo\src\Caixa\Properties\AssemblyInfo.cs"
     caixanetgestao  = "$CaixaNetRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
+    caixanetlinux   = "$CaixaNetRepo\src\Caixa\Properties\AssemblyInfo.cs"
+    caixanetgestaolinux = "$CaixaNetRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
 }
 
 # pastas de idioma que nao vao no pacote (so pt-BR fica), como no Build\Clean.CMD
@@ -188,7 +197,7 @@ function VersaoDoExe($exe) {
     $dll = [IO.Path]::ChangeExtension($exe, ".dll")
     $alvo = if (Test-Path $dll) { $dll } else { $exe }
     $asm = [Reflection.AssemblyName]::GetAssemblyName($alvo).Version.ToString()
-    $arq = (Get-Item $exe).VersionInfo.FileVersion
+    $arq = (Get-Item $alvo).VersionInfo.FileVersion
     return @{ Assembly = $asm; Arquivo = $arq }
 }
 
@@ -265,6 +274,32 @@ function ConferirCaixaNet($release) {
     foreach ($deps in Get-ChildItem $release -Filter *.deps.json) {
         if ((Get-Content $deps.FullName -Raw) -match '"runtimeTargets"') { throw "$($deps.Name) foi compilado sem RID: as DLLs por sistema nao estao na raiz." }
     }
+
+    # toda DLL que o programa referencia tem que estar na pasta ou no runtime base do .NET 10 (o caixa nao usa mais o de Desktop do
+    # Windows, que trazia, por exemplo, a System.Security.Cryptography.Xml da assinatura da NFC-e)
+    $runtime = Get-ChildItem "$env:ProgramFiles\dotnet\shared\Microsoft.NETCore.App" -Directory | Where-Object { $_.Name -like "10.*" } | Sort-Object Name | Select-Object -Last 1
+    $base = @{}
+    Get-ChildItem $runtime.FullName -Filter *.dll | ForEach-Object { $base[$_.BaseName.ToLower()] = $true }
+    $presentes = @{}
+    Get-ChildItem $release -Filter *.dll | ForEach-Object { $presentes[$_.BaseName.ToLower()] = $true }
+    # System.Windows.Extensions referencia a System.Drawing.Common em APIs de desenho que o caixa nao usa
+    $aceitas = @("system.drawing.common<-system.windows.extensions")
+    $faltando = @()
+    foreach ($dll in Get-ChildItem $release -Filter *.dll) {
+        $fs = [IO.File]::OpenRead($dll.FullName)
+        try {
+            $pe = New-Object System.Reflection.PortableExecutable.PEReader($fs)
+            if (-not $pe.HasMetadata) { continue }
+            $md = [System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($pe)
+            foreach ($h in $md.AssemblyReferences) {
+                $n = $md.GetString($md.GetAssemblyReference($h).Name).ToLower()
+                if ($presentes[$n] -or $base[$n] -or $n -in "mscorlib", "netstandard" -or "$n<-$($dll.BaseName.ToLower())" -in $aceitas) { continue }
+                $faltando += "$n (usada por $($dll.Name))"
+            }
+        }
+        finally { $fs.Dispose() }
+    }
+    if ($faltando) { throw "Faltam DLLs em ${release}: $(($faltando | Sort-Object -Unique) -join ', ')" }
 }
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -284,22 +319,29 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
 
     if ($prog.ContainsKey("Caixa")) {
         $repo = if ($prog.ContainsKey("Repo")) { $prog.Repo } else { $CaixaRepo }
-        $cmd = Join-Path $repo $prog.Script
+        $linux = $prog.ContainsKey("Linux")
         $log = Join-Path $Logs "$($prog.Id).log"
         if (-not $SemCompilar) {
             $original = Carimbar $ArquivoVersao[$prog.Id]
             try {
-                & cmd /c "`"$cmd`"" 2>&1 | Out-File $log -Encoding utf8
-                if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o instalador do $($prog.Nome) (log: $log)" }
+                if ($linux) {
+                    try { & (Join-Path $repo "setup\GerarDeb.ps1") -Programas $prog.Linux *>&1 | Out-File $log -Encoding utf8 }
+                    catch { throw "Falha ao gerar o pacote .deb do $($prog.Nome) (log: $log): $_" }
+                }
+                else {
+                    & cmd /c "`"$(Join-Path $repo $prog.Script)`"" 2>&1 | Out-File $log -Encoding utf8
+                    if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o instalador do $($prog.Nome) (log: $log)" }
+                }
             }
             finally { Restaurar $ArquivoVersao[$prog.Id] $original }
         }
-        $setup = Join-Path $repo "setup\Output\$($prog.Setup)"
-        if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
-        Copy-Item $setup (Join-Path $Instaladores $prog.Setup) -Force
         $release = Join-Path $repo $prog.Release
         if ($prog.ContainsKey("Repo")) { ConferirCaixaNet $release }
-        $versao = VersaoDoExe (Join-Path $release "Caixa.exe")
+        $versao = VersaoDoExe (Join-Path $release $(if ($linux) { "Caixa" } else { "Caixa.exe" }))
+        # instalador: o .exe do Inno Setup ou, no Linux, o .deb da versao (no portal com nome fixo)
+        $setup = if ($linux) { Join-Path $repo "setup\Output\$($prog.Pacote)_$($versao.Assembly)_amd64.deb" } else { Join-Path $repo "setup\Output\$($prog.Setup)" }
+        if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
+        Copy-Item $setup (Join-Path $Instaladores $prog.Setup) -Force
         Write-Host "  instalador: $($prog.Setup) ($($versao.Arquivo))"
 
         # pacote de atualizacao: so o programa (como o antigo Build\!Deploy.CMD): exe, dll, .config e as pastas Schemas, Fonts e pt-BR.
@@ -308,7 +350,8 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
         if (Test-Path $pasta) { Remove-Item $pasta -Recurse -Force }
         New-Item -ItemType Directory $pasta | Out-Null
         # *.runtimeconfig.json e *.deps.json: os do caixa em .NET 10 (no .NET Framework nao existem)
-        robocopy $release $pasta *.exe *.dll *.exe.config *.dll.config *.runtimeconfig.json *.deps.json /NFL /NDL /NJH /NJS /NP | Out-Null
+        if ($linux) { robocopy $release $pasta *.* /XF *.pdb *.ini *.new *.txt Logocli.png /NFL /NDL /NJH /NJS /NP | Out-Null }
+        else { robocopy $release $pasta *.exe *.dll *.exe.config *.dll.config *.runtimeconfig.json *.deps.json /NFL /NDL /NJH /NJS /NP | Out-Null }
         if ($LASTEXITCODE -ge 8) { throw "Falha ao copiar $release" }
         foreach ($sub in "Schemas", "Fonts", "pt-BR") {
             if (Test-Path (Join-Path $release $sub)) {

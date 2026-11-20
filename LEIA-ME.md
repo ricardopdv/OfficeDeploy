@@ -37,8 +37,11 @@ Os dois caixas geram `Caixa.exe`, por isso cada um busca a atualização na sua 
 |---|---|---|---|
 | `caixanet` | Caixa NFCe .NET 10 (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstalador.cmd`, `saida\Release\Caixa`) | `D:\Caixa` |
 | `caixanetgestao` | Caixa NFCe Gestão .NET 10 (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstaladorGestao.cmd`, `saida\Release\CaixaGestao`) | `D:\Caixa` |
+| `caixanetlinux` | Caixa NFCe .NET 10 Linux (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\Caixa`) | `/opt/caixa` |
+| `caixanetgestaolinux` | Caixa NFCe Gestão .NET 10 Linux (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\CaixaGestao`) | `/opt/caixa` |
 
-Esses dois ficam **fora** da geração padrão e só são gerados com `-Programas caixanet,caixanetgestao`.
+Esses ficam **fora** da geração padrão e só são gerados com `-Programas` (ex.: `-Programas caixanet,caixanetgestao,caixanetlinux,caixanetgestaolinux`).
+- **Linux:** o instalador é o pacote `.deb` (`caixa-nfce-teste_amd64.deb`, `caixa-nfce-gestao-teste_amd64.deb`; instalar com `sudo apt install ./caixa-nfce-teste_amd64.deb`, que traz o .NET 10, o MariaDB e o Java 21). O caixa no Linux busca a atualização no canal com `linux` no fim; o pacote de atualização leva a pasta inteira do programa (executáveis sem extensão e as `.so`), sem a configuração do cliente.
 - **Canal de atualização próprio:** o caixa convertido busca a atualização em `atualizacoes/caixanet` e `atualizacoes/caixanetgestao`, então os caixas de produção nunca recebem esta versão.
 - **Runtime:** o instalador de teste instala o runtime .NET 10 Desktop x86 quando ele não está na máquina.
 - **Pacote:** leva também os `*.runtimeconfig.json` e `*.deps.json`.
