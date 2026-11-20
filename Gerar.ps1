@@ -208,6 +208,65 @@ function AutoUpdaterXml($id, $versao, $zip, $zipPath) {
 "@
 }
 
+# Programa .NET Framework: confere se todas as DLLs que o programa usa carregam numa maquina nova (sem o GAC do desenvolvimento).
+# Simula a resolucao do .NET Framework: referencia com nome forte precisa achar na pasta a versao exata, ou a do redirecionamento
+# do .exe.config. Pega o Configurador (que compila na mesma pasta) trocando uma DLL por outra versao e redirecionamento desatualizado.
+function ConferirCarga($pasta, $exe) {
+    $redir = @{}
+    $cfg = Join-Path $pasta "$exe.config"
+    if (Test-Path $cfg) {
+        [xml]$x = Get-Content $cfg
+        foreach ($d in (Select-Xml -Xml $x -XPath '//a:dependentAssembly' -Namespace @{ a = 'urn:schemas-microsoft-com:asm.v1' })) {
+            $redir[$d.Node.assemblyIdentity.name.ToLower()] = $d.Node.bindingRedirect.newVersion
+        }
+    }
+    $versoes = @{}
+    foreach ($f in Get-ChildItem $pasta -File | Where-Object { $_.Extension -in ".dll", ".exe" }) {
+        try { $versoes[$f.BaseName.ToLower()] = [Reflection.AssemblyName]::GetAssemblyName($f.FullName).Version.ToString() } catch { }
+    }
+    # o que o programa carrega: o exe e, a partir dele, as referencias que estao na pasta
+    $problemas = @()
+    $visitados = @{}
+    $fila = New-Object System.Collections.Queue
+    $fila.Enqueue((Join-Path $pasta $exe))
+    while ($fila.Count -gt 0) {
+        $arq = $fila.Dequeue()
+        if ($visitados.ContainsKey($arq)) { continue }
+        $visitados[$arq] = $true
+        $fs = [IO.File]::OpenRead($arq)
+        try {
+            $pe = New-Object System.Reflection.PortableExecutable.PEReader($fs)
+            if (-not $pe.HasMetadata) { continue }
+            $md = [System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($pe)
+            foreach ($h in $md.AssemblyReferences) {
+                $r = $md.GetAssemblyReference($h)
+                $n = $md.GetString($r.Name)
+                $k = $n.ToLower()
+                if (-not $versoes.ContainsKey($k)) { continue }
+                $fila.Enqueue((Get-ChildItem $pasta -File | Where-Object { $_.BaseName -ieq $n -and $_.Extension -in ".dll", ".exe" } | Select-Object -First 1).FullName)
+                if ($r.PublicKeyOrToken.IsNil) { continue }
+                $pedida = if ($redir.ContainsKey($k)) { $redir[$k] } else { $r.Version.ToString() }
+                if ($pedida -ne $versoes[$k]) { $problemas += "$n pede $pedida (em $([IO.Path]::GetFileName($arq))), a pasta tem $($versoes[$k])" }
+            }
+        }
+        finally { $fs.Dispose() }
+    }
+    $problemas = $problemas | Sort-Object -Unique
+    if ($problemas) {
+        $problemas | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        throw "$exe nao carregaria numa maquina nova (versoes de DLL diferentes do que o programa pede): alinhe as versoes dos pacotes do programa e do Configurador."
+    }
+}
+
+# Caixa em .NET 10: as DLLs com versao por sistema (System.IO.Ports, System.Management...) tem que estar na raiz na versao do Windows.
+# Compilado sem RID, a de Windows fica em runtimes\ (que nao vai no instalador) e a raiz recebe a generica, que so lanca "nao suportado".
+function ConferirCaixaNet($release) {
+    if (Test-Path (Join-Path $release "runtimes")) { throw "$release tem a pasta runtimes: algum programa foi compilado sem RID (ver CaixaExecutavel.targets)." }
+    foreach ($deps in Get-ChildItem $release -Filter *.deps.json) {
+        if ((Get-Content $deps.FullName -Raw) -match '"runtimeTargets"') { throw "$($deps.Name) foi compilado sem RID: as DLLs por sistema nao estao na raiz." }
+    }
+}
+
 # ---------------------------------------------------------------------------------------------------------------
 # sem -Programas: todos os de producao (os de teste so quando pedidos pelo Id)
 $escolhidos = if ($Programas) { $Lista | Where-Object { $Programas -contains $_.Id } } else { $Lista | Where-Object { -not $_.ContainsKey("Teste") } }
@@ -239,6 +298,7 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
         if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
         Copy-Item $setup (Join-Path $Instaladores $prog.Setup) -Force
         $release = Join-Path $repo $prog.Release
+        if ($prog.ContainsKey("Repo")) { ConferirCaixaNet $release }
         $versao = VersaoDoExe (Join-Path $release "Caixa.exe")
         Write-Host "  instalador: $($prog.Setup) ($($versao.Arquivo))"
 
@@ -279,6 +339,7 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     $release = Join-Path "$OM\Release" $prog.Release
     $exe = Join-Path $release $prog.Exe
     if (-not (Test-Path $exe)) { throw "$($prog.Exe) nao encontrado em $release" }
+    ConferirCarga $release $prog.Exe
 
     $pasta = Join-Path $Preparo $prog.Id
     Preparar $release $pasta
