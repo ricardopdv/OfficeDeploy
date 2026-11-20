@@ -9,7 +9,13 @@
 </head>
 <body>
     <header class="topo">
-        <div class="marca"><span class="logo">BrPDV</span> <span class="sub">Downloads</span></div>
+        <a class="marca" href="/">
+            <picture>
+                <source srcset="/logo-brpdv-escuro.svg" media="(prefers-color-scheme: dark)" />
+                <img class="logo" src="/logo-brpdv.svg" alt="BrPDV Sistemas" width="80" height="40" />
+            </picture>
+            <span class="sub">Downloads</span>
+        </a>
         @if (User.Identity?.IsAuthenticated == true)
         {
             <form method="post" action="/sair" class="sair">

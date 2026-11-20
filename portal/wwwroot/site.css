@@ -49,11 +49,11 @@ body {
     border-bottom: 1px solid var(--linha);
 }
 
-.marca { display: flex; align-items: baseline; gap: 8px; }
-.logo { font-weight: 800; font-size: 20px; letter-spacing: .5px; }
-.logo::after { content: ""; display: inline-block; width: 28px; height: 4px; margin-left: 8px; vertical-align: middle; border-radius: 2px;
-    background: linear-gradient(90deg, #16a34a 0 50%, #facc15 50% 75%, #2563eb 75%); }
-.sub { color: var(--suave); }
+.marca { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; }
+.marca picture { display: flex; }
+/* o SVG do logotipo: letras escuras no tema claro, claras no escuro (o <source> do layout) */
+.logo { display: block; height: 40px; width: auto; }
+.sub { color: var(--suave); font-size: 17px; padding-left: 14px; border-left: 1px solid var(--linha); line-height: 28px; }
 
 .sair { display: flex; align-items: center; gap: 12px; margin: 0; }
 .usuario { color: var(--suave); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
@@ -104,6 +104,12 @@ input:focus { outline: 2px solid var(--destaque); outline-offset: 1px; }
 .icone { width: 40px; height: 40px; flex: none; object-fit: contain; padding: 4px; box-sizing: border-box; border-radius: 9px; background: #fff; border: 1px solid var(--linha); }
 .icone.vazio { border-radius: 8px; background: var(--linha); }
 .mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; }
+
+.cartao + .cartao { margin-top: 20px; }
+h2 { margin: 0 0 6px; font-size: 18px; }
+/* programa de terceiros: sigla no lugar do icone */
+.icone.sigla { display: flex; align-items: center; justify-content: center; padding: 0; font-weight: 700; font-size: 14px; color: #336791; }
+.externo::after { content: " ↗"; }
 
 .rodape { text-align: center; color: var(--suave); font-size: 13px; padding: 16px; }
 
