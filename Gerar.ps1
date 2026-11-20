@@ -31,7 +31,7 @@ Set-StrictMode -Version 2
 $Raiz      = $PSScriptRoot
 $OM        = "D:\Desenv\IA\OfficeManager"          # Source\ (fontes) e Release\ (saida das compilacoes)
 $CaixaRepo = "D:\Desenv\IA\Caixa"                  # repositorio do Caixa (setup\GerarInstalador.cmd)
-$CaixaNetRepo = "D:\Desenv\IA\CaixaNet"            # o caixa em .NET 10 (branch dotnet-moderno), em teste
+$CaixaNetRepo = "D:\Desenv\IA\CaixaNet"            # o caixa em .NET 10 (branch dotnet-moderno)
 $Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/update
 $Preparo   = Join-Path $Raiz "preparo"             # copia limpa de cada programa antes de empacotar
 $Logs      = Join-Path $Raiz "logs"
@@ -71,20 +71,21 @@ $Lista = @(
     @{ Id = "caixagestao";     Nome = "Caixa NFCe (Gestao)";        Caixa = $true;
        Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao.exe"; Release = "saida\Release\CaixaGestao";
        Icone = "src\Caixa\icon_app.ico" },
-    # o caixa em .NET 10 (D:\Desenv\IA\CaixaNet, branch dotnet-moderno), EM TESTE: canal proprio (atualizacoes/caixanet e
-    # caixanetgestao), para os caixas de producao nunca receberem esta versao. Nao entra em "todos": so com -Programas.
-    @{ Id = "caixanet";        Nome = "Caixa NFCe .NET 10 (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true;
-       Script = "setup\GerarInstalador.cmd";       Setup = "Setup Caixa NFCe NET10 teste.exe";        Release = "saida\Release\Caixa";
+    # o caixa em .NET 10 (D:\Desenv\IA\CaixaNet, branch dotnet-moderno), em producao para instalacoes novas, com canal proprio
+    # (atualizacoes/caixanet, caixanetgestao e os "linux"). Os caixas .NET Framework (canais caixa/caixagestao) nao recebem esta
+    # versao pela atualizacao: o .NET 10 precisa do runtime, que so o instalador instala.
+    @{ Id = "caixanet";        Nome = "Caixa NFCe .NET 10"; Caixa = $true; Repo = $CaixaNetRepo;
+       Script = "setup\GerarInstalador.cmd";       Setup = "Setup Caixa NFCe NET10.exe";        Release = "saida\Release\Caixa";
        Icone = "src\Caixa\icon_app.ico" },
-    @{ Id = "caixanetgestao";  Nome = "Caixa NFCe Gestao .NET 10 (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true;
-       Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao NET10 teste.exe"; Release = "saida\Release\CaixaGestao";
+    @{ Id = "caixanetgestao";  Nome = "Caixa NFCe Gestao .NET 10"; Caixa = $true; Repo = $CaixaNetRepo;
+       Script = "setup\GerarInstaladorGestao.cmd"; Setup = "Setup Caixa NFCe Gestao NET10.exe"; Release = "saida\Release\CaixaGestao";
        Icone = "src\Caixa\icon_app.ico" },
     # o mesmo caixa para Linux (64 bits): pacote .deb (setup\GerarDeb.ps1) e canal proprio (o caixa no Linux busca o canal + "linux")
-    @{ Id = "caixanetlinux";   Nome = "Caixa NFCe .NET 10 Linux (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true; Linux = "caixa";
-       Pacote = "caixa-nfce";        Setup = "caixa-nfce-teste_amd64.deb";        Release = "saida\Release\linux-x64\Caixa";
+    @{ Id = "caixanetlinux";   Nome = "Caixa NFCe .NET 10 Linux"; Caixa = $true; Repo = $CaixaNetRepo; Linux = "caixa";
+       Pacote = "caixa-nfce";        Setup = "caixa-nfce_amd64.deb";        Release = "saida\Release\linux-x64\Caixa";
        Icone = "src\Caixa\icon_app.ico" },
-    @{ Id = "caixanetgestaolinux"; Nome = "Caixa NFCe Gestao .NET 10 Linux (TESTE)"; Caixa = $true; Repo = $CaixaNetRepo; Teste = $true; Linux = "caixagestao";
-       Pacote = "caixa-nfce-gestao"; Setup = "caixa-nfce-gestao-teste_amd64.deb"; Release = "saida\Release\linux-x64\CaixaGestao";
+    @{ Id = "caixanetgestaolinux"; Nome = "Caixa NFCe Gestao .NET 10 Linux"; Caixa = $true; Repo = $CaixaNetRepo; Linux = "caixagestao";
+       Pacote = "caixa-nfce-gestao"; Setup = "caixa-nfce-gestao_amd64.deb"; Release = "saida\Release\linux-x64\CaixaGestao";
        Icone = "src\Caixa\icon_app.ico" }
 )
 
@@ -437,11 +438,40 @@ foreach ($p in $Lista) {
     }
     catch { Write-Warning "Icone de $($p.Nome) ($ico): $($_.Exception.Message)" }
 }
-$catalogo = @(Get-ChildItem $Instaladores -Filter *.exe | Sort-Object Name | ForEach-Object {
+# versao de um pacote .deb: o campo Version do control (ar -> control.tar.gz -> ./control)
+function VersaoDoDeb([string] $deb) {
+    $bytes = [IO.File]::ReadAllBytes($deb)
+    $pos = 8                                                     # "!<arch>`n"
+    while ($pos + 60 -le $bytes.Length) {
+        $nome = [Text.Encoding]::ASCII.GetString($bytes, $pos, 16).Trim().TrimEnd('/')
+        $tamanho = [long][Text.Encoding]::ASCII.GetString($bytes, $pos + 48, 10).Trim()
+        if ($nome -like "control.tar*") {
+            $ms = New-Object IO.MemoryStream (, $bytes[($pos + 60)..($pos + 60 + $tamanho - 1)])
+            $tar = New-Object IO.MemoryStream
+            $gz = New-Object IO.Compression.GZipStream($ms, [IO.Compression.CompressionMode]::Decompress)
+            try { $gz.CopyTo($tar) } finally { $gz.Dispose() }
+            $t = $tar.ToArray(); $i = 0
+            while ($i + 512 -le $t.Length) {
+                $arq = [Text.Encoding]::ASCII.GetString($t, $i, 100).Trim([char]0)
+                if (-not $arq) { break }
+                $tam = [Convert]::ToInt64([Text.Encoding]::ASCII.GetString($t, $i + 124, 12).Trim([char]0, ' '), 8)
+                if ($arq -match '(^|/)control$') {
+                    $m = [regex]::Match([Text.Encoding]::UTF8.GetString($t, $i + 512, $tam), '(?m)^Version:\s*(\S+)')
+                    if ($m.Success) { return $m.Groups[1].Value }
+                }
+                $i += 512 + [Math]::Ceiling($tam / 512) * 512
+            }
+            return ""
+        }
+        $pos += 60 + $tamanho + ($tamanho % 2)
+    }
+    return ""
+}
+$catalogo = @(Get-ChildItem $Instaladores -File | Where-Object { $_.Extension -in ".exe", ".deb" } | Sort-Object Name | ForEach-Object {
     [ordered]@{
         arquivo  = $_.Name
         programa = if ($nomes.ContainsKey($_.Name)) { $nomes[$_.Name] } else { $_.BaseName -replace '^Setup ', '' }
-        versao   = "$($_.VersionInfo.ProductVersion)".Trim()
+        versao   = if ($_.Extension -eq ".deb") { VersaoDoDeb $_.FullName } else { "$($_.VersionInfo.ProductVersion)".Trim() }
         tamanho  = $_.Length
         data     = $_.LastWriteTime.ToString("s")
         sha256   = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()

@@ -31,19 +31,19 @@ Os dois caixas geram `Caixa.exe`, por isso cada um busca a atualização na sua 
 (exe, dll, .config, `Schemas`, `Fonts`, `pt-BR`); a configuração do cliente (`CliSiTef.ini`, `ACBrLib.ini`,
 `Logocli.png`) e a `CalcRT` ficam de fora (vêm no instalador).
 
-### Caixa em .NET 10 (teste)
+### Caixa em .NET 10
 
 | Id | Programa | Origem | Pasta no cliente |
 |---|---|---|---|
-| `caixanet` | Caixa NFCe .NET 10 (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstalador.cmd`, `saida\Release\Caixa`) | `D:\Caixa` |
-| `caixanetgestao` | Caixa NFCe Gestão .NET 10 (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstaladorGestao.cmd`, `saida\Release\CaixaGestao`) | `D:\Caixa` |
-| `caixanetlinux` | Caixa NFCe .NET 10 Linux (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\Caixa`) | `/opt/caixa` |
-| `caixanetgestaolinux` | Caixa NFCe Gestão .NET 10 Linux (TESTE) | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\CaixaGestao`) | `/opt/caixa` |
+| `caixanet` | Caixa NFCe .NET 10 | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstalador.cmd`, `saida\Release\Caixa`) | `D:\Caixa` |
+| `caixanetgestao` | Caixa NFCe Gestão .NET 10 | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstaladorGestao.cmd`, `saida\Release\CaixaGestao`) | `D:\Caixa` |
+| `caixanetlinux` | Caixa NFCe .NET 10 Linux | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\Caixa`) | `/opt/caixa` |
+| `caixanetgestaolinux` | Caixa NFCe Gestão .NET 10 Linux | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\CaixaGestao`) | `/opt/caixa` |
 
-Esses ficam **fora** da geração padrão e só são gerados com `-Programas` (ex.: `-Programas caixanet,caixanetgestao,caixanetlinux,caixanetgestaolinux`).
-- **Linux:** o instalador é o pacote `.deb` (`caixa-nfce-teste_amd64.deb`, `caixa-nfce-gestao-teste_amd64.deb`; instalar com `sudo apt install ./caixa-nfce-teste_amd64.deb`, que traz o .NET 10, o MariaDB e o Java 21). O caixa no Linux busca a atualização no canal com `linux` no fim; o pacote de atualização leva a pasta inteira do programa (executáveis sem extensão e as `.so`), sem a configuração do cliente.
-- **Canal de atualização próprio:** o caixa convertido busca a atualização em `atualizacoes/caixanet` e `atualizacoes/caixanetgestao`, então os caixas de produção nunca recebem esta versão.
-- **Runtime:** o instalador de teste instala o runtime .NET 10 Desktop x86 quando ele não está na máquina.
+Em produção para instalações novas (instaladores `Setup Caixa NFCe NET10.exe`, `Setup Caixa NFCe Gestao NET10.exe`, `caixa-nfce_amd64.deb` e `caixa-nfce-gestao_amd64.deb`, todos no portal), lado a lado com o caixa .NET Framework. Entram na geração padrão; só eles: `-Programas caixanet,caixanetgestao,caixanetlinux,caixanetgestaolinux`.
+- **Linux:** o instalador é o pacote `.deb` (`caixa-nfce_amd64.deb`, `caixa-nfce-gestao_amd64.deb`; instalar com `sudo apt install ./caixa-nfce_amd64.deb`, que traz o .NET 10, o MariaDB e o Java 21). O caixa no Linux busca a atualização no canal com `linux` no fim; o pacote de atualização leva a pasta inteira do programa (executáveis sem extensão e as `.so`), sem a configuração do cliente.
+- **Canal de atualização próprio:** o caixa convertido busca a atualização em `atualizacoes/caixanet` e `atualizacoes/caixanetgestao`, então os caixas .NET Framework nunca recebem esta versão pela atualização (ficariam sem o runtime .NET 10 e o caixa não abriria). Para passar um cliente para o .NET 10, roda-se o instalador novo.
+- **Runtime:** o instalador instala o runtime .NET 10 Desktop x86 quando ele não está na máquina.
 - **Pacote:** leva também os `*.runtimeconfig.json` e `*.deps.json`.
 - **Versão:** no .NET 10 o `Caixa.exe` é só o lançador nativo, por isso a versão é lida do `Caixa.dll`.
 
