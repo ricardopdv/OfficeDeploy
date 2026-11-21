@@ -32,6 +32,7 @@ $Raiz      = $PSScriptRoot
 $OM        = "D:\Desenv\IA\OfficeManager"          # Source\ (fontes) e Release\ (saida das compilacoes)
 $CaixaRepo = "D:\Desenv\IA\Caixa"                  # repositorio do Caixa (setup\GerarInstalador.cmd)
 $CaixaNetRepo = "D:\Desenv\IA\CaixaNet"            # o caixa em .NET 10 (branch dotnet-moderno)
+$PrevendaNetRepo = "$OM\Source\PrevendaNet"       # o PreVenda em .NET 10 (Avalonia, Windows e Linux; setup\Gerar.ps1)
 $Publicar  = Join-Path $Raiz "publicar"            # espelho de /var/www/update
 $Preparo   = Join-Path $Raiz "preparo"             # copia limpa de cada programa antes de empacotar
 $Logs      = Join-Path $Raiz "logs"
@@ -86,7 +87,16 @@ $Lista = @(
        Icone = "src\Caixa\icon_app.ico" },
     @{ Id = "caixanetgestaolinux"; Nome = "Caixa NFCe Gestao .NET 10 Linux"; Caixa = $true; Repo = $CaixaNetRepo; Linux = "caixagestao";
        Pacote = "caixa-nfce-gestao"; Setup = "caixa-nfce-gestao_amd64.deb"; Release = "saida\Release\linux-x64\CaixaGestao";
-       Icone = "src\Caixa\icon_app.ico" }
+       Icone = "src\Caixa\icon_app.ico" },
+    # o PreVenda em .NET 10 (Avalonia, sem a interface do DevExpress), em producao para instalacoes novas, com canal proprio:
+    # atualizacoes/prevendanet (Windows) e prevendanetlinux (.deb). O PreVenda .NET Framework (canal prevenda) nao recebe esta
+    # versao pela atualizacao. Instalador e pacote saem do setup\Gerar.ps1 do projeto (com o atualizador PreVenda.Atualizador).
+    @{ Id = "prevendanet";      Nome = "PreVenda .NET 10";       PrevendaNet = $true; Repo = $PrevendaNetRepo; Plataforma = "windows";
+       Setup = "Setup PreVenda NET10.exe"; Release = "saida\win-x86";   Exe = "PreVenda.exe";
+       Icone = "Recursos\prevenda.ico" },
+    @{ Id = "prevendanetlinux"; Nome = "PreVenda .NET 10 Linux"; PrevendaNet = $true; Repo = $PrevendaNetRepo; Plataforma = "linux";
+       Pacote = "prevenda-net"; Setup = "prevenda-net_amd64.deb"; Release = "saida\linux-x64"; Exe = "PreVenda";
+       Icone = "Recursos\prevenda.ico" }
 )
 
 # AssemblyInfo de cada programa: recebe a versao do deploy antes de compilar e volta ao original depois
@@ -105,6 +115,8 @@ $ArquivoVersao = @{
     caixanetgestao  = "$CaixaNetRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
     caixanetlinux   = "$CaixaNetRepo\src\Caixa\Properties\AssemblyInfo.cs"
     caixanetgestaolinux = "$CaixaNetRepo\src\Caixa.Gestao\Properties\AssemblyInfo.cs"
+    prevendanet     = "$PrevendaNetRepo\PreVenda\Properties\AssemblyInfo.cs"
+    prevendanetlinux = "$PrevendaNetRepo\PreVenda\Properties\AssemblyInfo.cs"
 }
 
 # pastas de idioma que nao vao no pacote (so pt-BR fica), como no Build\Clean.CMD
@@ -317,6 +329,49 @@ $resumo = @()
 
 foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
     Passo $prog.Nome
+
+    if ($prog.ContainsKey("PrevendaNet")) {
+        $repo = $prog.Repo
+        $linux = $prog.Plataforma -eq "linux"
+        $log = Join-Path $Logs "$($prog.Id).log"
+        if (-not $SemCompilar) {
+            $original = Carimbar $ArquivoVersao[$prog.Id]
+            try {
+                try { & (Join-Path $repo "setup\Gerar.ps1") -Plataformas $prog.Plataforma *>&1 | Out-File $log -Encoding utf8 }
+                catch { throw "Falha ao gerar o instalador do $($prog.Nome) (log: $log): $_" }
+            }
+            finally { Restaurar $ArquivoVersao[$prog.Id] $original }
+        }
+        $release = Join-Path $repo $prog.Release
+        $versao = VersaoDoExe (Join-Path $release $prog.Exe)
+        $atualizador = if ($linux) { "PreVenda.Atualizador" } else { "PreVenda.Atualizador.exe" }
+        if (-not (Test-Path (Join-Path $release $atualizador))) { throw "$release nao tem o $atualizador." }
+        # instalador: o .exe do Inno Setup ou, no Linux, o .deb da versao (no portal com nome fixo)
+        $setup = if ($linux) { Join-Path $repo "setup\Output\$($prog.Pacote)_$($versao.Assembly)_amd64.deb" } else { Join-Path $repo "setup\Output\$($prog.Setup)" }
+        if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
+        Copy-Item $setup (Join-Path $Instaladores $prog.Setup) -Force
+        Write-Host "  instalador: $($prog.Setup) ($($versao.Arquivo))"
+
+        # pacote de atualizacao: a pasta publicada inteira (programa, Configurador, atualizador e DFe\Schemas); a configuracao
+        # fica no registro / ~/.config e a CalcRT so vem no instalador
+        $pasta = Join-Path $Preparo $prog.Id
+        if (Test-Path $pasta) { Remove-Item $pasta -Recurse -Force }
+        New-Item -ItemType Directory $pasta | Out-Null
+        robocopy $release $pasta /E /XF *.pdb /XD CalcRT /NFL /NDL /NJH /NJS /NP | Out-Null
+        if ($LASTEXITCODE -ge 8) { throw "Falha ao copiar $release" }
+        $dirAtu = Join-Path $Atualizacoes $prog.Id
+        if (-not (Test-Path $dirAtu)) { New-Item -ItemType Directory $dirAtu | Out-Null }
+        $zip = "$($prog.Id).zip"
+        $zipPath = Join-Path $dirAtu $zip
+        if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::CreateFromDirectory($pasta, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $false)
+        [IO.File]::WriteAllText((Join-Path $dirAtu "AutoUpdater.xml"), (AutoUpdaterXml $prog.Id $versao.Assembly $zip $zipPath), (New-Object Text.UTF8Encoding $false))
+        Write-Host "  atualizacao: atualizacoes/$($prog.Id)/$zip ($($versao.Assembly))"
+
+        $resumo += [pscustomobject]@{ Programa = $prog.Nome; Versao = $versao.Arquivo; Instalador = $prog.Setup; Atualizacao = "atualizacoes/$($prog.Id)/" }
+        continue
+    }
 
     if ($prog.ContainsKey("Caixa")) {
         $repo = if ($prog.ContainsKey("Repo")) { $prog.Repo } else { $CaixaRepo }
