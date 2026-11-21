@@ -1,5 +1,5 @@
 @echo off
-rem Envia publicar\ ao servidor de atualizacoes
+rem Envia D:\Desenv\IA\Output\Deploy ao servidor de atualizacoes
 set "PS=powershell"
 where pwsh >nul 2>nul
 if not errorlevel 1 set "PS=pwsh"

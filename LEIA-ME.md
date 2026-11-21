@@ -5,8 +5,8 @@ e publica no servidor de atualizações.
 
 | Arquivo | O que faz |
 |---|---|
-| `Gerar.cmd` / `Gerar.ps1` | Compila em Release, prepara cada programa e gera tudo em `publicar\` |
-| `Enviar.cmd` / `Enviar.ps1` | Envia `publicar\` para `root@166.0.186.213:/var/www/update` |
+| `Gerar.cmd` / `Gerar.ps1` | Compila em Release, prepara cada programa e gera tudo em `D:\Desenv\IA\Output\Deploy` |
+| `Enviar.cmd` / `Enviar.ps1` | Envia `Output\Deploy` para `root@166.0.186.213:/var/www/update` |
 | `GerarEEnviar.cmd` | Os dois em seguida |
 | `iss\App.iss` | Modelo do instalador (Inno Setup 6), o mesmo para todos os programas |
 | `portal\` | Portal de downloads com login (ASP.NET Core 10) em `https://update.gestaoagil.com.br` |
@@ -14,7 +14,7 @@ e publica no servidor de atualizações.
 
 ## Programas
 
-| Id | Programa | Origem (`D:\Desenv\IA\OfficeManager\Release\…`) | Instala em |
+| Id | Programa | Origem (`D:\Desenv\IA\Output\Release\…`) | Instala em |
 |---|---|---|---|
 | `officemanager` | OfficeManager (+ Configurador) | `OfficeManager` | `C:\OfficeManager` |
 | `gateway` | OfficeManager Gateway | `OfficeManagerGw` | `C:\OfficeManager\Gateway` |
@@ -23,8 +23,8 @@ e publica no servidor de atualizações.
 | `backup` | OfficeManager Backup | `OfficeManagerBackup` | `C:\OfficeManager\Backup` |
 | `troca` | Trocas (+ Configurador) | `Troca` | `C:\OfficeManager\Trocas` |
 | `caixacentral` | Caixa Central | `CaixaCentral` | `C:\OfficeManager\CaixaCentral` |
-| `caixa` | Caixa NFCe (modo OfficeManager) | repositório do Caixa (`setup\GerarInstalador.cmd`, `saida\Release\Caixa`) | `D:\Caixa` |
-| `caixagestao` | Caixa NFCe só do Gestão | repositório do Caixa (`setup\GerarInstaladorGestao.cmd`, `saida\Release\CaixaGestao`) | `D:\Caixa` |
+| `caixa` | Caixa NFCe (modo OfficeManager) | repositório do Caixa (`setup\GerarInstalador.cmd`, `Output\Release\Caixa\Caixa`) | `D:\Caixa` |
+| `caixagestao` | Caixa NFCe só do Gestão | repositório do Caixa (`setup\GerarInstaladorGestao.cmd`, `Output\Release\Caixa\CaixaGestao`) | `D:\Caixa` |
 
 Os dois caixas geram `Caixa.exe`, por isso cada um busca a atualização na sua pasta (`atualizacoes/caixa` e
 `atualizacoes/caixagestao`, em `Inicializacao.UrlAtualizacao`). O pacote de atualização do caixa leva só o programa
@@ -35,10 +35,10 @@ Os dois caixas geram `Caixa.exe`, por isso cada um busca a atualização na sua 
 
 | Id | Programa | Origem | Pasta no cliente |
 |---|---|---|---|
-| `caixanet` | Caixa NFCe .NET 10 | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstalador.cmd`, `saida\Release\Caixa`) | `D:\Caixa` |
-| `caixanetgestao` | Caixa NFCe Gestão .NET 10 | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstaladorGestao.cmd`, `saida\Release\CaixaGestao`) | `D:\Caixa` |
-| `caixanetlinux` | Caixa NFCe .NET 10 Linux | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\Caixa`) | `/opt/caixa` |
-| `caixanetgestaolinux` | Caixa NFCe Gestão .NET 10 Linux | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `saida\Release\linux-x64\CaixaGestao`) | `/opt/caixa` |
+| `caixanet` | Caixa NFCe .NET 10 | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstalador.cmd`, `Output\Release\CaixaNet\Caixa`) | `D:\Caixa` |
+| `caixanetgestao` | Caixa NFCe Gestão .NET 10 | `D:\Desenv\IA\CaixaNet` (`setup\GerarInstaladorGestao.cmd`, `Output\Release\CaixaNet\CaixaGestao`) | `D:\Caixa` |
+| `caixanetlinux` | Caixa NFCe .NET 10 Linux | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `Output\Release\CaixaNet\linux-x64\Caixa`) | `/opt/caixa` |
+| `caixanetgestaolinux` | Caixa NFCe Gestão .NET 10 Linux | `D:\Desenv\IA\CaixaNet` (`setup\GerarDeb.ps1`, `Output\Release\CaixaNet\linux-x64\CaixaGestao`) | `/opt/caixa` |
 
 Em produção para instalações novas (instaladores `Setup Caixa NFCe NET10.exe`, `Setup Caixa NFCe Gestao NET10.exe`, `caixa-nfce_amd64.deb` e `caixa-nfce-gestao_amd64.deb`, todos no portal), lado a lado com o caixa .NET Framework. Entram na geração padrão; só eles: `-Programas caixanet,caixanetgestao,caixanetlinux,caixanetgestaolinux`.
 - **Linux:** o instalador é o pacote `.deb` (`caixa-nfce_amd64.deb`, `caixa-nfce-gestao_amd64.deb`; instalar com `sudo apt install ./caixa-nfce_amd64.deb`, que traz o .NET 10, o MariaDB e o Java 21). O caixa no Linux busca a atualização no canal com `linux` no fim; o pacote de atualização leva a pasta inteira do programa (executáveis sem extensão e as `.so`), sem a configuração do cliente.
@@ -78,10 +78,10 @@ Gerar.cmd                                   todos
 Gerar.cmd -Programas troca,gateway          só alguns (pelo Id)
 Gerar.cmd -SemCompilar                      só empacota (usa a última compilação)
 GerarEEnviar.cmd                            gera tudo e publica
-Enviar.cmd                                  publica o que já está em publicar\
+Enviar.cmd                                  publica o que já está em Output\Deploy
 ```
 
-## O que sai em `publicar\` (espelho de `/var/www/update`)
+## O que sai em `Output\Deploy` (espelho de `/var/www/update`)
 
 ```
 instaladores\Setup <Programa>.exe           um instalador por programa (baixado só pelo portal, com login)
@@ -135,7 +135,7 @@ sozinhos e precisam ser reinstalados pelo portal.
 - Configuração em `portal\appsettings.json` (endereço do login, papéis, pasta publicada).
 - Publicar: `PublicarPortal.ps1` (dotnet publish, `/var/www/update-portal`, serviço `update-portal` em
   `127.0.0.1:8010`, chaves do cookie em `/var/lib/update-portal`, nginx `portal\deploy\update.conf`).
-- Rodar local: `dotnet run --project portal` (ambiente Development: login na API pública das revendas, instaladores de `publicar\`).
+- Rodar local: `dotnet run --project portal` (ambiente Development: login na API pública das revendas, instaladores de `Output\Deploy`).
 
 ## Servidor (nginx)
 
@@ -146,13 +146,27 @@ sozinhos e precisam ser reinstalados pelo portal.
 - todo o resto vai para o portal; em `http://` redireciona para `https://`;
 - certificado do Let's Encrypt (certbot, renovação automática).
 
+## Pastas: tudo em `D:\Desenv\IA\Output`
+
+Os quatro repositórios (OfficeManager com o PrevendaNet, Caixa, CaixaNet e este) gravam numa pasta só, fora do git:
+
+```
+Output\Debug\<programa>, Output\Release\<programa>   compilação (OfficeManager direto; PrevendaNet\, Caixa\ e CaixaNet\ por repositório)
+Output\Instaladores                                 o que os scripts de instalador dos repositórios geram
+Output\Deploy                                       espelho de /var/www/update (atualizacoes\ e instaladores\)
+Output\Temp                                         preparação (apagada depois de cada programa)
+```
+
+Sem cópia guardada em dobro: o `Gerar.ps1` **move** o instalador de `Output\Instaladores` para `Output\Deploy\instaladores`
+(com o nome fixo do portal) e apaga a preparação de cada programa assim que o pacote e o instalador ficam prontos.
+
 ## Preparação de cada programa
 
-A origem é a pasta `Release` do programa, depois de compilar os seus projetos. Essa pasta também tem arquivos
+A origem é a pasta `Release` do programa (em `Output\Release`), depois de compilar os seus projetos. Essa pasta também tem arquivos
 que não saem da compilação (DFe, SQLUpdate, ReportsBI, CalcRT, Layouts, Dashboards, OfficeManagerAc.dll), por isso
 o pacote parte dela. Ficam de fora: `*.pdb`, `*.bak`, `*.vshost.*`, as pastas de idioma (só `pt-BR` fica), a
 documentação XML das DLLs (`Nome.xml` ao lado de `Nome.dll`) e a `CalcRT` (vai à parte no instalador, de
-`preparo\_calcrt`). O resultado fica em `preparo\<id>`.
+`Output\Temp\preparo\_calcrt`). A cópia limpa fica em `Output\Temp\preparo\<id>` só enquanto o programa é empacotado.
 
 ## Envio (SSH)
 

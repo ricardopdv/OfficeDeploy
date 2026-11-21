@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-  Envia .\publicar para o servidor de atualizacoes (/var/www/update) por SSH, so com o que mudou.
+  Envia D:\Desenv\IA\Output\Deploy para o servidor de atualizacoes (/var/www/update) por SSH, so com o que mudou.
 
   1. compara o SHA-256 de cada arquivo local com o do publicado no servidor;
   2. no servidor, copia o publicado para uma pasta temporaria e manda para ela so os arquivos novos ou alterados
-     (os que sairam de .\publicar sao apagados dela);
+     (os que sairam de Output\Deploy sao apagados dela);
   3. so no fim a pasta temporaria substitui o publicado (quem estiver baixando nao pega metade de uma versao).
   A versao anterior fica em /var/www/update.anterior ate o proximo envio.
 
@@ -23,7 +23,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Publicar = Join-Path $PSScriptRoot "publicar"
+$Publicar = "D:\Desenv\IA\Output\Deploy"   # o espelho do servidor (o Gerar.ps1 grava aqui)
 if (-not (Test-Path (Join-Path $Publicar "instaladores"))) { throw "Nada para enviar: rode antes o Gerar.ps1." }
 
 $ssh = "$env:WINDIR\System32\OpenSSH\ssh.exe"
@@ -68,7 +68,7 @@ foreach ($rel in $apagar) { Remoto "rm -f '$temp/$rel'" | Out-Null }
 
 # um scp por pasta, com os arquivos dela
 $porPasta = $enviar | Group-Object { $d = [IO.Path]::GetDirectoryName($_); if ($d) { $d.Replace('\', '/') } else { "" } }
-# caminhos relativos a .\publicar (sem "D:", que o scp confunde com um servidor)
+# caminhos relativos a Output\Deploy (sem "D:", que o scp confunde com um servidor)
 Push-Location $Publicar
 try {
     foreach ($g in $porPasta) {
