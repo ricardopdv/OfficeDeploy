@@ -2,6 +2,7 @@
 ;   /DAppId={{GUID}  (a chave dupla e o escape do Inno para "{")  /DNome="OfficeManager"  /DExe="OfficeManager.exe"  /DOrigem="<pasta preparada>"
 ;   /DPasta="C:\OfficeManager"  /DIcone="<.ico>"  /DSaida="<pasta dos instaladores>"  /DArquivo="Setup OfficeManager"
 ;   /DIniciarComWindows=1 (opcional: tarefa marcada para abrir com o Windows)
+;   /DImagemPequena="<png,png...>" /DImagemGrande="<png,png...>" (opcional: imagens do assistente com o ícone do programa)
 ;   /DCalcRT="<pasta preparada da CalcRT>" /DJdk="<jdk-21_windows-x64_bin.exe>" (opcional: calculadora da reforma
 ;   tributaria em {app}\CalcRT e o JDK 21, instalado so se a maquina ainda nao tiver Java 21 ou maior)
 ; Atualiza por cima de uma instalacao anterior (mesmo AppId). A desinstalacao remove so os arquivos do pacote:
@@ -34,6 +35,13 @@ OutputDir={#Saida}
 OutputBaseFilename={#Arquivo}
 SetupIconFile={#Icone}
 UninstallDisplayIcon={app}\{#Exe}
+; o ícone do programa também dentro do assistente (no lugar das figuras do Inno): ImagensInstalador.ps1
+#ifdef ImagemPequena
+WizardSmallImageFile={#ImagemPequena}
+#endif
+#ifdef ImagemGrande
+WizardImageFile={#ImagemGrande}
+#endif
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

@@ -457,6 +457,9 @@ foreach ($prog in $(if ($SoCatalogo) { @() } else { $escolhidos })) {
               "/DIcone=$(Join-Path "$OM\Source" $prog.Icone)", "/DSaida=$Instaladores", "/DArquivo=$arquivo")
     if ($prog.ContainsKey("IniciarComWindows")) { $defs += "/DIniciarComWindows=1" }
     if ($prog.ContainsKey("CalcRT")) { $defs += "/DCalcRT=$(PrepararCalcRT)", "/DJdk=$Jdk" }
+    # as imagens do assistente com o ícone do programa (em Temp, apagadas no fim junto com a preparação)
+    $imagens = & (Join-Path $Raiz "ImagensInstalador.ps1") -Icone (Join-Path "$OM\Source" $prog.Icone) -Destino (Join-Path $Preparo "_imagens\$($prog.Id)")
+    $defs += "/DImagemPequena=$($imagens.Pequena)", "/DImagemGrande=$($imagens.Grande)"
     $log = Join-Path $Logs "inno-$($prog.Id).log"
     & $ISCC /Q @defs (Join-Path $Raiz "iss\App.iss") 2>&1 | Out-File $log -Encoding utf8
     if ($LASTEXITCODE -ne 0) { Get-Content $log | Select-Object -Last 10 | ForEach-Object { Write-Host $_ -ForegroundColor Red }; throw "Falha no instalador de $($prog.Nome) (log: $log)" }

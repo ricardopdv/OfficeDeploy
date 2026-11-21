@@ -160,6 +160,11 @@ Output\Temp                                         preparação (apagada depois
 Sem cópia guardada em dobro: o `Gerar.ps1` **move** o instalador de `Output\Instaladores` para `Output\Deploy\instaladores`
 (com o nome fixo do portal) e apaga a preparação de cada programa assim que o pacote e o instalador ficam prontos.
 
+**Ícone nos instaladores:** além do `SetupIconFile` (o `.ico` do programa), o assistente do Inno mostra o mesmo ícone no
+canto das páginas e na tela de boas-vindas (`WizardSmallImageFile` e `WizardImageFile`, no lugar das figuras do Inno).
+As imagens saem do `.ico` pelo `ImagensInstalador.ps1`: na hora, para os instaladores do `iss\App.iss`; nos
+repositórios do Caixa, CaixaNet e PrevendaNet ficam prontas em `setup\Imagens` (rodar o script de novo se o ícone mudar).
+
 ## Preparação de cada programa
 
 A origem é a pasta `Release` do programa (em `Output\Release`), depois de compilar os seus projetos. Essa pasta também tem arquivos
